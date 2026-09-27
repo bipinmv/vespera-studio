@@ -15,7 +15,7 @@ import {
   ToolType,
   ImageDimensions,
   ImageEditorContextType,
-  TextOverlay,
+  TextItem,
   DrawStroke,
   HistoryState,
   CollageLayoutPattern,
@@ -188,8 +188,45 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
   // Crop Aspect Ratio State
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<string>("free");
 
-  // Text Overlay State
-  const [textOverlay, setTextOverlay] = useState<TextOverlay | null>(null);
+  // Multi-Text Overlay State
+  const [textOverlays, setTextOverlays] = useState<TextItem[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+
+  const addTextOverlay = useCallback((initialText = "Add Heading") => {
+    const id = "text_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+    setTextOverlays(prev => {
+      const newItem: TextItem = {
+        id,
+        text: initialText,
+        color: "#ffffff",
+        fontSize: 36,
+        fontFamily: "Geist, sans-serif",
+        x: 50,
+        y: Math.min(80, 25 + (prev.length % 5) * 12)
+      };
+      return [...prev, newItem];
+    });
+    setSelectedTextId(id);
+  }, []);
+
+  const updateTextOverlay = useCallback((id: string, updates: Partial<Omit<TextItem, "id">>) => {
+    setTextOverlays(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
+  }, []);
+
+  const removeTextOverlay = useCallback((id: string) => {
+    setTextOverlays(prev => {
+      const next = prev.filter(t => t.id !== id);
+      setSelectedTextId(curr =>
+        curr === id ? (next.length > 0 ? next[next.length - 1].id : null) : curr
+      );
+      return next;
+    });
+  }, []);
+
+  const clearTextOverlays = useCallback(() => {
+    setTextOverlays([]);
+    setSelectedTextId(null);
+  }, []);
 
   // Drawing Strokes State
   const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
@@ -254,7 +291,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     if (!imageSrc) return false;
     if (historyIndex > 0) return true;
     if (drawStrokes.length > 0) return true;
-    if (textOverlay !== null) return true;
+    if (textOverlays.length > 0) return true;
     return (
       adjustments.brightness !== 100 ||
       adjustments.contrast !== 100 ||
@@ -268,7 +305,15 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       adjustments.sepia !== 0 ||
       adjustments.invert !== 0
     );
-  }, [viewMode, isCollageHasPhotos, imageSrc, historyIndex, drawStrokes, textOverlay, adjustments]);
+  }, [
+    viewMode,
+    isCollageHasPhotos,
+    imageSrc,
+    historyIndex,
+    drawStrokes,
+    textOverlays,
+    adjustments
+  ]);
 
   useEffect(() => {
     if (!imageSrc) {
@@ -337,7 +382,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
   const resetAdjustments = useCallback(() => {
     setAdjustments(DEFAULT_ADJUSTMENTS);
     setActiveFilterId("none");
-    setTextOverlay(null);
+    setTextOverlays([]);
+    setSelectedTextId(null);
     setDrawStrokes([]);
     setSelectedAspectRatio("free");
     setHistory(prev => [
@@ -378,7 +424,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setImageName(file.name);
     setAdjustments(DEFAULT_ADJUSTMENTS);
     setActiveFilterId("none");
-    setTextOverlay(null);
+    setTextOverlays([]);
+    setSelectedTextId(null);
     setDrawStrokes([]);
     setSelectedAspectRatio("free");
     setHistory([{ adjustments: DEFAULT_ADJUSTMENTS, imageSrc: url }]);
@@ -392,7 +439,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     originalImgRef.current = null;
     setAdjustments(DEFAULT_ADJUSTMENTS);
     setActiveFilterId("none");
-    setTextOverlay(null);
+    setTextOverlays([]);
+    setSelectedTextId(null);
     setDrawStrokes([]);
     setSelectedAspectRatio("free");
     setHistory([{ adjustments: DEFAULT_ADJUSTMENTS, imageSrc: null }]);
@@ -514,25 +562,29 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       ctx.restore();
     }
 
-    // Render Text Overlay Layer
-    if (textOverlay && textOverlay.text.trim()) {
+    // Render Multi-Text Overlay Layers
+    textOverlays.forEach(item => {
+      if (!item.text.trim()) return;
       ctx.save();
-      const realFontSize = (textOverlay.fontSize / 100) * canvas.height * 0.15;
-      ctx.font = `bold ${realFontSize}px Geist, sans-serif`;
-      ctx.fillStyle = textOverlay.color;
+      const realFontSize = (item.fontSize / 100) * canvas.height * 0.15;
+      const font = item.fontFamily || "Geist, sans-serif";
+      ctx.font = `bold ${realFontSize}px ${font}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = item.color;
       ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
 
-      const tx = (textOverlay.x / 100) * canvas.width;
-      const ty = (textOverlay.y / 100) * canvas.height;
-      ctx.fillText(textOverlay.text, tx, ty);
+      const tx = (item.x / 100) * canvas.width;
+      const ty = (item.y / 100) * canvas.height;
+      ctx.fillText(item.text, tx, ty);
       ctx.restore();
-    }
+    });
 
     return canvas;
-  }, [viewMode, imageSrc, adjustments, drawStrokes, textOverlay]);
+  }, [viewMode, imageSrc, adjustments, drawStrokes, textOverlays]);
 
   return (
     <ImageEditorContext.Provider
@@ -567,8 +619,13 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
         hasChanges,
         selectedAspectRatio,
         setSelectedAspectRatio,
-        textOverlay,
-        setTextOverlay,
+        textOverlays,
+        selectedTextId,
+        setSelectedTextId,
+        addTextOverlay,
+        updateTextOverlay,
+        removeTextOverlay,
+        clearTextOverlays,
         drawStrokes,
         addDrawStroke,
         clearDrawStrokes,

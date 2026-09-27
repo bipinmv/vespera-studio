@@ -31,10 +31,12 @@ export interface ImageDimensions {
   height: number;
 }
 
-export interface TextOverlay {
+export interface TextItem {
+  id: string;
   text: string;
   color: string;
   fontSize: number;
+  fontFamily?: string;
   x: number; // percentage 0 - 100
   y: number;
 }
@@ -95,9 +97,14 @@ export interface ImageEditorContextType {
   selectedAspectRatio: string;
   setSelectedAspectRatio: (ratio: string) => void;
 
-  // Text Overlay State
-  textOverlay: TextOverlay | null;
-  setTextOverlay: React.Dispatch<React.SetStateAction<TextOverlay | null>>;
+  // Multi-Text Overlay State
+  textOverlays: TextItem[];
+  selectedTextId: string | null;
+  setSelectedTextId: (id: string | null) => void;
+  addTextOverlay: (initialText?: string) => void;
+  updateTextOverlay: (id: string, updates: Partial<Omit<TextItem, "id">>) => void;
+  removeTextOverlay: (id: string) => void;
+  clearTextOverlays: () => void;
 
   // Drawing & Masking State
   drawStrokes: DrawStroke[];
