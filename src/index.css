@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  --color-obsidian-bg: #131313;
+  --color-obsidian-surface: #1c1b1b;
+  --color-obsidian-container: #201f1f;
+  --color-obsidian-high: #2a2a2a;
+  --color-obsidian-border: #434655;
+  --color-obsidian-outline: #8d90a0;
+  
+  --color-brand-primary: #2563eb;
+  --color-brand-primary-light: #b4c5ff;
+  --color-brand-secondary: #94de2d;
+  --color-brand-accent: #ffb596;
+}
+
+:root {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #131313;
+  color: #e5e2e1;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #131313;
+  color: #e5e2e1;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+
+/* Custom scrollbars matching Stitch specs */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #353534;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8d90a0;
+}
+
+/* Canvas Shadow */
+.canvas-shadow {
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+}
+
+/* Custom slider input styling */
+input[type="range"] {
+  accent-color: #2563eb;
+}
