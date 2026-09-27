@@ -97,6 +97,13 @@ export interface ImageEditorContextType {
   handleImageUpload: (file: File) => void;
   clearImage: () => void;
   hasChanges: boolean;
+  hasUnsavedChanges: boolean;
+  isUnsavedChangesModalOpen: boolean;
+  setIsUnsavedChangesModalOpen: (open: boolean) => void;
+  markAsSaved: () => void;
+  saveAndExit: () => void;
+  discardAndExit: () => void;
+  handleRequestHome: () => void;
 
   // Aspect Ratio State
   selectedAspectRatio: string;

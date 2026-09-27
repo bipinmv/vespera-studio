@@ -44,6 +44,7 @@ export const CanvasArea: React.FC = () => {
     imageDimensions,
     handleImageUpload,
     clearImage,
+    handleRequestHome,
     activeTool,
     setActiveTool,
     selectedAspectRatio,
@@ -1089,7 +1090,7 @@ export const CanvasArea: React.FC = () => {
 
             {/* Close / Replace Image */}
             <button
-              onClick={clearImage}
+              onClick={handleRequestHome}
               className="text-[#8d90a0] hover:text-red-400 transition font-mono text-[11px]"
               title="Close current image"
             >

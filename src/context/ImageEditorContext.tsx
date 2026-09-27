@@ -185,6 +185,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
   const [adjustments, setAdjustments] = useState<Adjustments>(DEFAULT_ADJUSTMENTS);
   const [activeFilterId, setActiveFilterId] = useState<string>("none");
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isUnsavedChangesModalOpen, setIsUnsavedChangesModalOpen] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
 
   // Crop Aspect Ratio State
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<string>("free");
@@ -208,10 +210,12 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       return [...prev, newItem];
     });
     setSelectedTextId(id);
+    setIsSaved(false);
   }, []);
 
   const updateTextOverlay = useCallback((id: string, updates: Partial<Omit<TextItem, "id">>) => {
     setTextOverlays(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
+    setIsSaved(false);
   }, []);
 
   const removeTextOverlay = useCallback((id: string) => {
@@ -222,11 +226,13 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       );
       return next;
     });
+    setIsSaved(false);
   }, []);
 
   const clearTextOverlays = useCallback(() => {
     setTextOverlays([]);
     setSelectedTextId(null);
+    setIsSaved(false);
   }, []);
 
   // Drawing Strokes State & Controls
@@ -238,6 +244,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const undoLastStroke = useCallback(() => {
     setDrawStrokes(prev => prev.slice(0, -1));
+    setIsSaved(false);
   }, []);
 
   // Collage State & Controls
@@ -254,17 +261,20 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
   const updateCollageSettings = useCallback(
     <K extends keyof CollageSettings>(key: K, value: CollageSettings[K]) => {
       setCollageSettings(prev => ({ ...prev, [key]: value }));
+      setIsSaved(false);
     },
     []
   );
 
   const resetCollageSettings = useCallback(() => {
     setCollageSettings(DEFAULT_COLLAGE_SETTINGS);
+    setIsSaved(false);
   }, []);
 
   const clearCollagePhotos = useCallback(() => {
     setCollageImages([FALLBACK_IMAGE, FALLBACK_IMAGE, FALLBACK_IMAGE, FALLBACK_IMAGE]);
     setUserUploadedTileCount(0);
+    setIsSaved(false);
   }, []);
 
   // Update collage initial image when a new imageSrc is loaded
@@ -324,6 +334,25 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     adjustments
   ]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    return hasChanges && !isSaved;
+  }, [hasChanges, isSaved]);
+
+  const markAsSaved = useCallback(() => {
+    setIsSaved(true);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   useEffect(() => {
     if (!imageSrc) {
       originalImgRef.current = null;
@@ -349,10 +378,12 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       return next;
     });
     setUserUploadedTileCount(c => c + 1);
+    setIsSaved(false);
   }, []);
 
   const updateAdjustment = useCallback(
     (key: keyof Adjustments, value: number) => {
+      setIsSaved(false);
       setAdjustments(prev => {
         const updated = { ...prev, [key]: value };
         setHistory(hPrev => [
@@ -368,6 +399,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const applyCroppedImageSrc = useCallback(
     (newSrc: string) => {
+      setIsSaved(false);
       setImageSrc(newSrc);
       setHistory(hPrev => [...hPrev.slice(0, historyIndex + 1), { adjustments, imageSrc: newSrc }]);
       setHistoryIndex(hPrev => hPrev + 1);
@@ -377,6 +409,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const applyPresetFilter = useCallback(
     (filter: FilterPreset) => {
+      setIsSaved(false);
       setActiveFilterId(filter.id);
       setAdjustments(filter.adjustments);
       setHistory(prev => [
@@ -389,6 +422,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
   );
 
   const resetAdjustments = useCallback(() => {
+    setIsSaved(false);
     setAdjustments(DEFAULT_ADJUSTMENTS);
     setActiveFilterId("none");
     setTextOverlays([]);
@@ -404,6 +438,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const undo = useCallback(() => {
     if (historyIndex > 0) {
+      setIsSaved(false);
       const newIndex = historyIndex - 1;
       setHistoryIndex(newIndex);
       const targetState = history[newIndex];
@@ -416,6 +451,7 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
 
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
+      setIsSaved(false);
       const newIndex = historyIndex + 1;
       setHistoryIndex(newIndex);
       const targetState = history[newIndex];
@@ -439,6 +475,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setSelectedAspectRatio("free");
     setHistory([{ adjustments: DEFAULT_ADJUSTMENTS, imageSrc: url }]);
     setHistoryIndex(0);
+    setIsSaved(false);
+    setIsUnsavedChangesModalOpen(false);
   }, []);
 
   const clearImage = useCallback(() => {
@@ -455,14 +493,18 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setHistory([{ adjustments: DEFAULT_ADJUSTMENTS, imageSrc: null }]);
     setHistoryIndex(0);
     setUserUploadedTileCount(0);
+    setIsSaved(false);
+    setIsUnsavedChangesModalOpen(false);
   }, []);
 
   const addDrawStroke = useCallback((stroke: DrawStroke) => {
     setDrawStrokes(prev => [...prev, stroke]);
+    setIsSaved(false);
   }, []);
 
   const clearDrawStrokes = useCallback(() => {
     setDrawStrokes([]);
+    setIsSaved(false);
   }, []);
 
   const createBlankCanvas = useCallback((width = 1200, height = 800, color = "#1e1e1e") => {
@@ -482,6 +524,8 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setHistoryIndex(0);
     setActiveTool("draw");
     setViewMode("editor");
+    setIsSaved(false);
+    setIsUnsavedChangesModalOpen(false);
   }, []);
 
   // Generate a processed canvas: handles both Editor Mode single image & Collage Mode grid
@@ -640,6 +684,46 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     return canvas;
   }, [viewMode, imageSrc, adjustments, drawStrokes, textOverlays]);
 
+  const discardAndExit = useCallback(() => {
+    setIsUnsavedChangesModalOpen(false);
+    clearImage();
+    setViewMode("editor");
+  }, [clearImage]);
+
+  const saveAndExit = useCallback(() => {
+    const canvas = getProcessedCanvas();
+    if (canvas && canvas.width > 0 && canvas.height > 0) {
+      const sanitizeName = (name: string) => name.replace(/\.[^/.]+$/, "");
+      const baseName =
+        viewMode === "collage"
+          ? "vespera_collage"
+          : imageName && imageName !== "No file opened"
+            ? sanitizeName(imageName)
+            : "vespera_export";
+      const filename = `${baseName}_edited.png`;
+
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsUnsavedChangesModalOpen(false);
+    clearImage();
+    setViewMode("editor");
+  }, [getProcessedCanvas, viewMode, imageName, clearImage]);
+
+  const handleRequestHome = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setIsUnsavedChangesModalOpen(true);
+    } else {
+      clearImage();
+      setViewMode("editor");
+    }
+  }, [hasUnsavedChanges, clearImage]);
+
   return (
     <ImageEditorContext.Provider
       value={{
@@ -671,6 +755,13 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
         handleImageUpload,
         clearImage,
         hasChanges,
+        hasUnsavedChanges,
+        isUnsavedChangesModalOpen,
+        setIsUnsavedChangesModalOpen,
+        markAsSaved,
+        saveAndExit,
+        discardAndExit,
+        handleRequestHome,
         selectedAspectRatio,
         setSelectedAspectRatio,
         textOverlays,

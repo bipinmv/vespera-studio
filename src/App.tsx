@@ -9,6 +9,7 @@ import { CollageCanvas } from "./components/CollageCanvas";
 import { InspectorPanel } from "./components/InspectorPanel";
 import { CollageInspectorPanel } from "./components/CollageInspectorPanel";
 import { ExportModal } from "./components/ExportModal";
+import { UnsavedChangesModal } from "./components/UnsavedChangesModal";
 
 const MainLayout: React.FC = () => {
   const { viewMode } = useImageEditor();
@@ -38,6 +39,7 @@ const MainLayout: React.FC = () => {
       </div>
 
       <ExportModal />
+      <UnsavedChangesModal />
     </div>
   );
 };

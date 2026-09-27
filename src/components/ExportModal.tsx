@@ -5,8 +5,15 @@ import { X, Download, FileImage, AlertCircle, Info } from "lucide-react";
 type ImageFormat = "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
 
 export const ExportModal: React.FC = () => {
-  const { isExportOpen, setIsExportOpen, imageName, imageSrc, viewMode, getProcessedCanvas } =
-    useImageEditor();
+  const {
+    isExportOpen,
+    setIsExportOpen,
+    imageName,
+    imageSrc,
+    viewMode,
+    getProcessedCanvas,
+    markAsSaved
+  } = useImageEditor();
 
   const [format, setFormat] = useState<ImageFormat>("image/png");
   const [quality, setQuality] = useState<number>(100);
@@ -104,6 +111,7 @@ export const ExportModal: React.FC = () => {
       document.body.removeChild(link);
       setIsExporting(false);
       setIsExportOpen(false);
+      markAsSaved();
     };
 
     // Special SVG handling

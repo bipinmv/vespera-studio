@@ -25,7 +25,7 @@ export const Header: React.FC = () => {
     imageName,
     hasChanges,
     isCollageHasPhotos,
-    clearImage
+    handleRequestHome
   } = useImageEditor();
 
   const onFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -41,10 +41,7 @@ export const Header: React.FC = () => {
       {/* Left Branding */}
       <div className="flex items-center gap-3">
         <button
-          onClick={() => {
-            clearImage();
-            setViewMode("editor");
-          }}
+          onClick={handleRequestHome}
           title="Return to Home"
           className="font-black tracking-widest text-lg bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent select-none drop-shadow-[0_0_12px_rgba(59,130,246,0.35)] hover:opacity-80 transition cursor-pointer"
         >
