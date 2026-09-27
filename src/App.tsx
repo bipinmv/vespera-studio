@@ -1,5 +1,6 @@
 import React from "react";
 import { ImageEditorProvider, useImageEditor } from "./context/ImageEditorContext";
+import { Analytics } from "@vercel/analytics/react";
 import { Header } from "./components/Header";
 import { LeftToolbar } from "./components/LeftToolbar";
 import { CanvasArea } from "./components/CanvasArea";
@@ -45,6 +46,7 @@ export default function App() {
   return (
     <ImageEditorProvider>
       <MainLayout />
+      <Analytics />
     </ImageEditorProvider>
   );
 }
