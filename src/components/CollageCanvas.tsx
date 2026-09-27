@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useRef, ChangeEvent, MouseEvent } from 'react';
-import { useImageEditor } from '../context/ImageEditorContext';
-import { CollageLayoutPattern } from '../types/editor';
-import { 
-  LayoutGrid, 
-  Grid2X2, 
-  Grid3X3, 
-  Columns, 
-  Rows, 
-  LayoutTemplate, 
-  ChevronDown, 
+import React, { useEffect, useState, useRef, ChangeEvent, MouseEvent } from "react";
+import { useImageEditor } from "../context/ImageEditorContext";
+import { CollageLayoutPattern } from "../types/editor";
+import {
+  LayoutGrid,
+  Grid2X2,
+  Grid3X3,
+  Columns,
+  Rows,
+  LayoutTemplate,
+  ChevronDown,
   Download,
   Check,
   PanelLeft,
   Grid
-} from 'lucide-react';
+} from "lucide-react";
 
 interface LayoutOption {
   id: CollageLayoutPattern;
@@ -24,15 +24,16 @@ interface LayoutOption {
 }
 
 export const CollageCanvas: React.FC = () => {
-  const { 
+  const {
     imageSrc,
-    collageImages, 
-    layoutPattern, 
-    setLayoutPattern, 
+    collageImages,
+    layoutPattern,
+    setLayoutPattern,
     handleCollageTileUpload,
     collageCanvasRef,
     setIsExportOpen,
-    isCollageHasPhotos
+    isCollageHasPhotos,
+    collageSettings
   } = useImageEditor();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -52,8 +53,8 @@ export const CollageCanvas: React.FC = () => {
         setIsDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const onTileFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -71,33 +72,88 @@ export const CollageCanvas: React.FC = () => {
 
   const getTileHoverLabel = (idx: number): string => {
     const hasPhoto = hasPhotoInTile(idx);
-    if (!hasPhoto) return 'Add Photo';
-    if (layoutPattern === 'split' && idx === 0) return 'Change Main Photo';
-    if (layoutPattern === 'top1bottom2' && idx === 0) return 'Change Hero Banner';
-    if (layoutPattern === 'bottom1top2' && idx === 0) return 'Change Hero Banner';
-    if (layoutPattern === 'left1right3' && idx === 0) return 'Change Main Photo';
-    return 'Change Photo';
+    if (!hasPhoto) return "Add Photo";
+    if (layoutPattern === "split" && idx === 0) return "Change Main Photo";
+    if (layoutPattern === "top1bottom2" && idx === 0) return "Change Hero Banner";
+    if (layoutPattern === "bottom1top2" && idx === 0) return "Change Hero Banner";
+    if (layoutPattern === "left1right3" && idx === 0) return "Change Main Photo";
+    return "Change Photo";
   };
 
   const layoutOptions: LayoutOption[] = [
-    { id: '2x2', name: '2 × 2 Grid', desc: '4 equal square tiles', tilesCount: 4, icon: Grid2X2 },
-    { id: 'split', name: 'Asymmetric 3', desc: '1 main left hero, 2 right stacked', tilesCount: 3, icon: Grid3X3 },
-    { id: 'h3', name: '3 Columns', desc: '3 vertical side-by-side strips', tilesCount: 3, icon: Columns },
-    { id: 'v3', name: '3 Rows', desc: '3 horizontal stacked strips', tilesCount: 3, icon: Rows },
-    { id: 'top1bottom2', name: 'Top Hero + 2', desc: '1 wide top banner, 2 bottom tiles', tilesCount: 3, icon: LayoutTemplate },
-    { id: 'bottom1top2', name: '2 Top + Bottom Hero', desc: '2 top tiles, 1 wide bottom banner', tilesCount: 3, icon: LayoutTemplate },
-    { id: 'left1right3', name: 'Left Hero + 3', desc: '1 large left photo, 3 small right stacked', tilesCount: 4, icon: PanelLeft },
-    { id: 'grid3x3', name: '3 × 3 Grid', desc: '9 mini photo tiles', tilesCount: 9, icon: Grid },
+    { id: "2x2", name: "2 × 2 Grid", desc: "4 equal square tiles", tilesCount: 4, icon: Grid2X2 },
+    {
+      id: "split",
+      name: "Asymmetric 3",
+      desc: "1 main left hero, 2 right stacked",
+      tilesCount: 3,
+      icon: Grid3X3
+    },
+    {
+      id: "h3",
+      name: "3 Columns",
+      desc: "3 vertical side-by-side strips",
+      tilesCount: 3,
+      icon: Columns
+    },
+    { id: "v3", name: "3 Rows", desc: "3 horizontal stacked strips", tilesCount: 3, icon: Rows },
+    {
+      id: "top1bottom2",
+      name: "Top Hero + 2",
+      desc: "1 wide top banner, 2 bottom tiles",
+      tilesCount: 3,
+      icon: LayoutTemplate
+    },
+    {
+      id: "bottom1top2",
+      name: "2 Top + Bottom Hero",
+      desc: "2 top tiles, 1 wide bottom banner",
+      tilesCount: 3,
+      icon: LayoutTemplate
+    },
+    {
+      id: "left1right3",
+      name: "Left Hero + 3",
+      desc: "1 large left photo, 3 small right stacked",
+      tilesCount: 4,
+      icon: PanelLeft
+    },
+    { id: "grid3x3", name: "3 × 3 Grid", desc: "9 mini photo tiles", tilesCount: 9, icon: Grid }
   ];
 
   const currentLayoutObj = layoutOptions.find(l => l.id === layoutPattern) || layoutOptions[0];
 
-  // Calculate exact bounds for all 8 layout patterns on 1600x1200 resolution
-  const getBounds = (pattern: CollageLayoutPattern, width: number, height: number) => {
-    const padding = 20;
-    const gap = 16;
+  const getCollageFilterString = (filter: string): string => {
+    switch (filter) {
+      case "vivid":
+        return "saturate(165%) contrast(110%) brightness(105%)";
+      case "warm":
+        return "sepia(30%) saturate(125%) brightness(105%) hue-rotate(-10deg)";
+      case "cool":
+        return "saturate(115%) hue-rotate(15deg) contrast(105%)";
+      case "mono":
+        return "grayscale(100%) contrast(130%) brightness(105%)";
+      case "vintage":
+        return "sepia(45%) contrast(95%) brightness(105%) saturate(85%)";
+      case "dramatic":
+        return "contrast(145%) brightness(95%) saturate(120%)";
+      case "cyber":
+        return "hue-rotate(170deg) saturate(160%) contrast(120%)";
+      case "none":
+      default:
+        return "none";
+    }
+  };
 
-    if (pattern === '2x2') {
+  // Calculate exact bounds for all 8 layout patterns on 1600x1200 resolution
+  const getBounds = (
+    pattern: CollageLayoutPattern,
+    width: number,
+    height: number,
+    padding: number,
+    gap: number
+  ) => {
+    if (pattern === "2x2") {
       const tileW = (width - padding * 2 - gap) / 2;
       const tileH = (height - padding * 2 - gap) / 2;
       return [
@@ -106,7 +162,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding, y: padding + tileH + gap, w: tileW, h: tileH },
         { x: padding + tileW + gap, y: padding + tileH + gap, w: tileW, h: tileH }
       ];
-    } else if (pattern === 'split') {
+    } else if (pattern === "split") {
       const rightColW = (width - padding * 2 - gap) * 0.35;
       const mainW = (width - padding * 2 - gap) * 0.65;
       const sideH = (height - padding * 2 - gap) / 2;
@@ -115,7 +171,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding + mainW + gap, y: padding, w: rightColW, h: sideH },
         { x: padding + mainW + gap, y: padding + sideH + gap, w: rightColW, h: sideH }
       ];
-    } else if (pattern === 'h3') {
+    } else if (pattern === "h3") {
       const tileW = (width - padding * 2 - gap * 2) / 3;
       const tileH = height - padding * 2;
       return [
@@ -123,7 +179,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding + tileW + gap, y: padding, w: tileW, h: tileH },
         { x: padding + (tileW + gap) * 2, y: padding, w: tileW, h: tileH }
       ];
-    } else if (pattern === 'v3') {
+    } else if (pattern === "v3") {
       const tileW = width - padding * 2;
       const tileH = (height - padding * 2 - gap * 2) / 3;
       return [
@@ -131,7 +187,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding, y: padding + tileH + gap, w: tileW, h: tileH },
         { x: padding, y: padding + (tileH + gap) * 2, w: tileW, h: tileH }
       ];
-    } else if (pattern === 'top1bottom2') {
+    } else if (pattern === "top1bottom2") {
       const topH = (height - padding * 2 - gap) * 0.55;
       const bottomH = (height - padding * 2 - gap) * 0.45;
       const bottomW = (width - padding * 2 - gap) / 2;
@@ -140,7 +196,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding, y: padding + topH + gap, w: bottomW, h: bottomH },
         { x: padding + bottomW + gap, y: padding + topH + gap, w: bottomW, h: bottomH }
       ];
-    } else if (pattern === 'bottom1top2') {
+    } else if (pattern === "bottom1top2") {
       const topH = (height - padding * 2 - gap) * 0.45;
       const bottomH = (height - padding * 2 - gap) * 0.55;
       const topW = (width - padding * 2 - gap) / 2;
@@ -149,7 +205,7 @@ export const CollageCanvas: React.FC = () => {
         { x: padding + topW + gap, y: padding, w: topW, h: topH },
         { x: padding, y: padding + topH + gap, w: width - padding * 2, h: bottomH }
       ];
-    } else if (pattern === 'left1right3') {
+    } else if (pattern === "left1right3") {
       const mainW = (width - padding * 2 - gap) * 0.6;
       const rightColW = (width - padding * 2 - gap) * 0.4;
       const sideH = (height - padding * 2 - gap * 2) / 3;
@@ -183,7 +239,7 @@ export const CollageCanvas: React.FC = () => {
     const canvas = collageCanvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const width = 1600;
@@ -191,26 +247,27 @@ export const CollageCanvas: React.FC = () => {
     canvas.width = width;
     canvas.height = height;
 
-    const bounds = getBounds(layoutPattern, width, height);
+    const { padding, gap, borderRadius, bgColor, filter } = collageSettings;
+    const bounds = getBounds(layoutPattern, width, height, padding, gap);
     const loadedImages: Array<HTMLImageElement | null> = Array(bounds.length).fill(null);
 
     const drawGrid = () => {
-      ctx.fillStyle = '#131313';
+      ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, width, height);
 
       bounds.forEach((b, i) => {
         const img = loadedImages[i];
-        
+
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(b.x, b.y, b.w, b.h, 16);
+        ctx.roundRect(b.x, b.y, b.w, b.h, borderRadius);
         ctx.clip();
 
         // 1. Draw tile background color
-        ctx.fillStyle = '#1c1b1b';
+        ctx.fillStyle = "#1c1b1b";
         ctx.fillRect(b.x, b.y, b.w, b.h);
 
-        // 2. Draw image with object-fit cover
+        // 2. Draw image with object-fit cover + Global Filter
         if (img && img.complete) {
           const imgAspect = img.naturalWidth / img.naturalHeight;
           const tileAspect = b.w / b.h;
@@ -227,12 +284,14 @@ export const CollageCanvas: React.FC = () => {
             offsetY = b.y - (renderH - b.h) / 2;
           }
 
+          ctx.filter = getCollageFilterString(filter);
           ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
+          ctx.filter = "none";
         }
 
         // 3. IF HOVERED: Draw translucent black overlay + plus circle + label (Strictly Clipped inside roundRect!)
         if (hoveredTileIdx === i) {
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+          ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
           ctx.fillRect(b.x, b.y, b.w, b.h);
 
           const cx = b.x + b.w / 2;
@@ -242,16 +301,16 @@ export const CollageCanvas: React.FC = () => {
           // Blue Circle Icon
           ctx.beginPath();
           ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-          ctx.fillStyle = '#2563eb';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.fillStyle = "#2563eb";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
           ctx.shadowBlur = 12;
           ctx.fill();
 
           // Plus Icon Symbol
           ctx.shadowBlur = 0;
-          ctx.strokeStyle = '#ffffff';
+          ctx.strokeStyle = "#ffffff";
           ctx.lineWidth = radius < 24 ? 3 : 4;
-          ctx.lineCap = 'round';
+          ctx.lineCap = "round";
           ctx.beginPath();
           const pSize = radius < 24 ? 7 : 10;
           ctx.moveTo(cx - pSize, cy);
@@ -264,10 +323,10 @@ export const CollageCanvas: React.FC = () => {
           const labelText = getTileHoverLabel(i);
           const fontSize = b.w < 250 || b.h < 250 ? 16 : 22;
           ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.fillStyle = "#ffffff";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
           ctx.shadowBlur = 8;
           ctx.fillText(labelText, cx, cy + radius + (radius < 24 ? 8 : 14));
         }
@@ -278,7 +337,7 @@ export const CollageCanvas: React.FC = () => {
         ctx.save();
         ctx.beginPath();
         ctx.roundRect(b.x, b.y, b.w, b.h, 16);
-        ctx.strokeStyle = hoveredTileIdx === i ? '#2563eb' : '#2a2a2a';
+        ctx.strokeStyle = hoveredTileIdx === i ? "#2563eb" : "#2a2a2a";
         ctx.lineWidth = hoveredTileIdx === i ? 4 : 3;
         ctx.stroke();
         ctx.restore();
@@ -292,7 +351,7 @@ export const CollageCanvas: React.FC = () => {
         return;
       }
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.src = src;
       img.onload = () => {
         loadedImages[idx] = img;
@@ -302,7 +361,15 @@ export const CollageCanvas: React.FC = () => {
         drawGrid();
       };
     });
-  }, [collageImages, layoutPattern, hoveredTileIdx, collageCanvasRef, imageSrc, uploadedTileMap]);
+  }, [
+    collageImages,
+    layoutPattern,
+    hoveredTileIdx,
+    collageCanvasRef,
+    imageSrc,
+    uploadedTileMap,
+    collageSettings
+  ]);
 
   // Handle Mouse Hover Detection on Canvas
   const handleCanvasMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
@@ -316,7 +383,13 @@ export const CollageCanvas: React.FC = () => {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    const bounds = getBounds(layoutPattern, 1600, 1200);
+    const bounds = getBounds(
+      layoutPattern,
+      1600,
+      1200,
+      collageSettings.padding,
+      collageSettings.gap
+    );
     const hitIdx = bounds.findIndex(
       b => mouseX >= b.x && mouseX <= b.x + b.w && mouseY >= b.y && mouseY <= b.y + b.h
     );
@@ -342,7 +415,13 @@ export const CollageCanvas: React.FC = () => {
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    const bounds = getBounds(layoutPattern, 1600, 1200);
+    const bounds = getBounds(
+      layoutPattern,
+      1600,
+      1200,
+      collageSettings.padding,
+      collageSettings.gap
+    );
     const hitIdx = bounds.findIndex(
       b => clickX >= b.x && clickX <= b.x + b.w && clickY >= b.y && clickY <= b.y + b.h
     );
@@ -358,12 +437,12 @@ export const CollageCanvas: React.FC = () => {
   return (
     <main className="flex-1 bg-[#131313] relative flex flex-col items-center justify-center p-6 select-none overflow-auto">
       {/* Hidden File Input */}
-      <input 
+      <input
         ref={fileInputRef}
-        type="file" 
-        accept="image/*" 
-        className="hidden" 
-        onChange={onTileFileChange} 
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onTileFileChange}
       />
 
       {/* Top Controls Bar with Custom Dropdown Menu */}
@@ -381,7 +460,9 @@ export const CollageCanvas: React.FC = () => {
           >
             <CurrentIcon className="w-4 h-4 text-[#2563eb]" />
             <span>{currentLayoutObj.name}</span>
-            <ChevronDown className={`w-4 h-4 text-[#8d90a0] transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-4 h-4 text-[#8d90a0] transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
+            />
           </button>
 
           {/* Floating Layout Dropdown Menu */}
@@ -391,7 +472,7 @@ export const CollageCanvas: React.FC = () => {
                 Select Collage Layout ({layoutOptions.length})
               </div>
 
-              {layoutOptions.map((item) => {
+              {layoutOptions.map(item => {
                 const Icon = item.icon;
                 const isSelected = layoutPattern === item.id;
                 return (
@@ -402,18 +483,24 @@ export const CollageCanvas: React.FC = () => {
                       setIsDropdownOpen(false);
                     }}
                     className={`flex items-center justify-between p-2 rounded-lg transition-all text-left cursor-pointer ${
-                      isSelected 
-                        ? 'bg-[#2563eb]/20 border border-[#2563eb] text-white' 
-                        : 'hover:bg-[#201f1f] text-[#8d90a0] hover:text-white border border-transparent'
+                      isSelected
+                        ? "bg-[#2563eb]/20 border border-[#2563eb] text-white"
+                        : "hover:bg-[#201f1f] text-[#8d90a0] hover:text-white border border-transparent"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className={`p-1.5 rounded-md ${isSelected ? 'bg-[#2563eb] text-white' : 'bg-[#131313] text-[#8d90a0]'}`}>
+                      <div
+                        className={`p-1.5 rounded-md ${isSelected ? "bg-[#2563eb] text-white" : "bg-[#131313] text-[#8d90a0]"}`}
+                      >
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white leading-tight">{item.name}</span>
-                        <span className="text-[10px] text-[#8d90a0] leading-tight mt-0.5">{item.desc}</span>
+                        <span className="text-xs font-bold text-white leading-tight">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] text-[#8d90a0] leading-tight mt-0.5">
+                          {item.desc}
+                        </span>
                       </div>
                     </div>
 
@@ -444,8 +531,8 @@ export const CollageCanvas: React.FC = () => {
 
       {/* Interactive Canvas Workspace - Perfect 4:3 Aspect Ratio matching 1600x1200 */}
       <div className="relative w-[640px] h-[480px] bg-[#131313] p-1.5 rounded-xl border border-[#2a2a2a] canvas-shadow overflow-hidden flex items-center justify-center">
-        <canvas 
-          ref={collageCanvasRef} 
+        <canvas
+          ref={collageCanvasRef}
           onMouseMove={handleCanvasMouseMove}
           onMouseLeave={handleCanvasMouseLeave}
           onClick={handleCanvasClick}

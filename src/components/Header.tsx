@@ -1,26 +1,25 @@
-import React, { ChangeEvent } from 'react';
-import { useImageEditor } from '../context/ImageEditorContext';
-import { 
-  SlidersHorizontal, 
-  Columns, 
-  Undo2, 
-  Redo2, 
-  Upload, 
-  Download, 
-  RotateCcw,
-  Sparkles
-} from 'lucide-react';
+import React, { ChangeEvent } from "react";
+import { useImageEditor } from "../context/ImageEditorContext";
+import {
+  SlidersHorizontal,
+  Columns,
+  Undo2,
+  Redo2,
+  Upload,
+  Download,
+  RotateCcw
+} from "lucide-react";
 
 export const Header: React.FC = () => {
-  const { 
+  const {
     imageSrc,
-    viewMode, 
-    setViewMode, 
-    undo, 
-    redo, 
-    historyIndex, 
-    history, 
-    resetAdjustments, 
+    viewMode,
+    setViewMode,
+    undo,
+    redo,
+    historyIndex,
+    history,
+    resetAdjustments,
     setIsExportOpen,
     handleImageUpload,
     imageName,
@@ -34,18 +33,15 @@ export const Header: React.FC = () => {
     }
   };
 
-  const isExportAvailable = imageSrc !== null || (viewMode === 'collage' && isCollageHasPhotos);
+  const isExportAvailable = imageSrc !== null || (viewMode === "collage" && isCollageHasPhotos);
 
   return (
     <header className="h-14 bg-[#1c1b1b] border-b border-[#2a2a2a] px-4 flex items-center justify-between text-sm select-none z-30">
       {/* Left Branding */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 font-bold tracking-tight text-white">
-          <div className="w-7 h-7 rounded bg-[#2563eb] flex items-center justify-center text-white shadow-md shadow-blue-900/40">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <span className="font-bold tracking-wider text-base text-white">VESPERA</span>
-        </div>
+        <span className="font-black tracking-widest text-lg bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent select-none drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]">
+          VESPERA
+        </span>
 
         {imageSrc && (
           <>
@@ -61,11 +57,11 @@ export const Header: React.FC = () => {
       {imageSrc ? (
         <div className="flex items-center bg-[#131313] p-1 rounded-md border border-[#2a2a2a] animate-fadeIn">
           <button
-            onClick={() => setViewMode('editor')}
+            onClick={() => setViewMode("editor")}
             className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
-              viewMode === 'editor' 
-                ? 'bg-[#2563eb] text-white shadow' 
-                : 'text-[#8d90a0] hover:text-white hover:bg-[#201f1f]'
+              viewMode === "editor"
+                ? "bg-[#2563eb] text-white shadow"
+                : "text-[#8d90a0] hover:text-white hover:bg-[#201f1f]"
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -74,22 +70,28 @@ export const Header: React.FC = () => {
 
           {/* Split View Button: Enabled ONLY when edits/changes exist */}
           <button
-            onClick={() => hasChanges && setViewMode('split')}
+            onClick={() => hasChanges && setViewMode("split")}
             disabled={!hasChanges}
-            title={hasChanges ? "Compare original vs edited photo" : "Split View compares original vs edited photo. Apply an edit first."}
+            title={
+              hasChanges
+                ? "Compare original vs edited photo"
+                : "Split View compares original vs edited photo. Apply an edit first."
+            }
             className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-all ${
-              viewMode === 'split' 
-                ? 'bg-[#2563eb] text-white shadow' 
-                : hasChanges 
-                  ? 'text-[#8d90a0] hover:text-white hover:bg-[#201f1f]' 
-                  : 'text-[#555] opacity-40 cursor-not-allowed'
+              viewMode === "split"
+                ? "bg-[#2563eb] text-white shadow"
+                : hasChanges
+                  ? "text-[#8d90a0] hover:text-white hover:bg-[#201f1f]"
+                  : "text-[#555] opacity-40 cursor-not-allowed"
             }`}
           >
             <Columns className="w-3.5 h-3.5" />
             <span>Split View</span>
           </button>
         </div>
-      ) : <div />}
+      ) : (
+        <div />
+      )}
 
       {/* Right Controls & CTA */}
       <div className="flex items-center gap-2">
@@ -130,12 +132,7 @@ export const Header: React.FC = () => {
         <label className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#201f1f] hover:bg-[#2a2a2a] border border-[#434655]/60 text-xs font-medium text-[#e5e2e1] rounded cursor-pointer transition">
           <Upload className="w-3.5 h-3.5 text-[#b4c5ff]" />
           <span className="hidden md:inline">Open File</span>
-          <input 
-            type="file" 
-            accept="image/*" 
-            onChange={onFileInputChange} 
-            className="hidden" 
-          />
+          <input type="file" accept="image/*" onChange={onFileInputChange} className="hidden" />
         </label>
 
         {/* Export Modal CTA - Shown when image is open OR when collage has photos */}

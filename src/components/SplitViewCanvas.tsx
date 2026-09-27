@@ -1,6 +1,14 @@
-import React, { useEffect, useRef, useState, useCallback, MouseEvent, TouchEvent, ChangeEvent } from 'react';
-import { useImageEditor } from '../context/ImageEditorContext';
-import { SlidersHorizontal, Sparkles, FolderOpen, FileImage } from 'lucide-react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  MouseEvent,
+  TouchEvent,
+  ChangeEvent
+} from "react";
+import { useImageEditor } from "../context/ImageEditorContext";
+import { SlidersHorizontal, Sparkles, FolderOpen, FileImage } from "lucide-react";
 
 export const SplitViewCanvas: React.FC = () => {
   const { imageSrc, adjustments, handleImageUpload } = useImageEditor();
@@ -16,13 +24,23 @@ export const SplitViewCanvas: React.FC = () => {
     const img = imgRef.current;
     if (!canvas || !img || !img.complete) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
 
-    const { brightness, contrast, saturation, exposure, blur, sepia, grayscale, hueRotate, invert } = adjustments;
+    const {
+      brightness,
+      contrast,
+      saturation,
+      exposure,
+      blur,
+      sepia,
+      grayscale,
+      hueRotate,
+      invert
+    } = adjustments;
     const effectiveBrightness = Math.max(0, brightness + exposure * 0.5);
 
     ctx.filter = `
@@ -42,7 +60,7 @@ export const SplitViewCanvas: React.FC = () => {
   useEffect(() => {
     if (!imageSrc) return;
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.src = imageSrc;
     img.onload = () => {
       imgRef.current = img;
@@ -64,8 +82,12 @@ export const SplitViewCanvas: React.FC = () => {
     setSliderPosition(percentage);
   };
 
-  const onMouseDown = () => { isDraggingRef.current = true; };
-  const onMouseUp = () => { isDraggingRef.current = false; };
+  const onMouseDown = () => {
+    isDraggingRef.current = true;
+  };
+  const onMouseUp = () => {
+    isDraggingRef.current = false;
+  };
   const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (isDraggingRef.current) handleMove(e.clientX);
   };
@@ -88,7 +110,9 @@ export const SplitViewCanvas: React.FC = () => {
             <FileImage className="w-8 h-8" />
           </div>
           <h2 className="text-lg font-bold text-white">No Image for Split Comparison</h2>
-          <p className="text-xs text-[#8d90a0] mt-1 mb-5">Open an image first to use the Before/After comparison slider.</p>
+          <p className="text-xs text-[#8d90a0] mt-1 mb-5">
+            Open an image first to use the Before/After comparison slider.
+          </p>
           <div className="w-full">
             <label className="w-full py-2.5 px-4 bg-[#2563eb] hover:bg-blue-600 text-white font-medium text-xs rounded-xl cursor-pointer transition flex items-center justify-center gap-2">
               <FolderOpen className="w-4 h-4" />
@@ -102,7 +126,7 @@ export const SplitViewCanvas: React.FC = () => {
   }
 
   return (
-    <main 
+    <main
       className="flex-1 bg-[#131313] relative flex flex-col items-center justify-center overflow-hidden p-6 select-none"
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -113,34 +137,36 @@ export const SplitViewCanvas: React.FC = () => {
         <span>VESPERA STUDIO COMPARISON ENGINE</span>
       </div>
 
-      <div 
+      <div
         ref={containerRef}
         onMouseDown={onMouseDown}
         onTouchMove={onTouchMove}
         className="relative max-w-[75vw] max-h-[72vh] rounded canvas-shadow overflow-hidden cursor-ew-resize border border-[#2a2a2a]"
       >
-        <img 
-          src={imageSrc} 
-          alt="Original" 
+        <img
+          src={imageSrc}
+          alt="Original"
           className="max-w-[75vw] max-h-[72vh] object-contain block pointer-events-none"
         />
 
-        <div 
+        <div
           className="absolute top-0 bottom-0 right-0 overflow-hidden pointer-events-none"
           style={{ width: `${100 - sliderPosition}%` }}
         >
-          <div 
+          <div
             className="absolute top-0 bottom-0 right-0"
-            style={{ width: containerRef.current ? `${containerRef.current.clientWidth}px` : '100%' }}
+            style={{
+              width: containerRef.current ? `${containerRef.current.clientWidth}px` : "100%"
+            }}
           >
-            <canvas 
-              ref={canvasEditedRef} 
+            <canvas
+              ref={canvasEditedRef}
               className="max-w-[75vw] max-h-[72vh] object-contain block"
             />
           </div>
         </div>
 
-        <div 
+        <div
           className="absolute top-0 bottom-0 w-0.5 bg-[#2563eb] shadow-[0_0_12px_#2563eb] z-30"
           style={{ left: `${sliderPosition}%` }}
         >

@@ -1,15 +1,15 @@
 export interface Adjustments {
-  brightness: number;  // 0 - 200%
-  contrast: number;    // 0 - 200%
-  saturation: number;  // 0 - 200%
-  exposure: number;    // -100 to +100
+  brightness: number; // 0 - 200%
+  contrast: number; // 0 - 200%
+  saturation: number; // 0 - 200%
+  exposure: number; // -100 to +100
   temperature: number; // -100 to +100
-  blur: number;        // 0 - 20px
-  vignette: number;    // 0 - 100%
-  hueRotate: number;   // -180 to 180 deg
-  grayscale: number;   // 0 - 100%
-  sepia: number;       // 0 - 100%
-  invert: number;      // 0 - 100%
+  blur: number; // 0 - 20px
+  vignette: number; // 0 - 100%
+  hueRotate: number; // -180 to 180 deg
+  grayscale: number; // 0 - 100%
+  sepia: number; // 0 - 100%
+  invert: number; // 0 - 100%
 }
 
 export interface FilterPreset {
@@ -19,11 +19,12 @@ export interface FilterPreset {
   adjustments: Adjustments;
 }
 
-export type ViewMode = 'editor' | 'split' | 'collage';
+export type ViewMode = "editor" | "split" | "collage";
 
-export type ToolType = 'adjust' | 'filters' | 'crop' | 'split' | 'collage' | 'text' | 'draw';
+export type ToolType = "adjust" | "filters" | "crop" | "split" | "collage" | "text" | "draw";
 
-export type CollageLayoutPattern = '2x2' | 'split' | 'h3' | 'v3' | 'top1bottom2' | 'bottom1top2' | 'left1right3' | 'grid3x3';
+export type CollageLayoutPattern =
+  "2x2" | "split" | "h3" | "v3" | "top1bottom2" | "bottom1top2" | "left1right3" | "grid3x3";
 
 export interface ImageDimensions {
   width: number;
@@ -47,6 +48,17 @@ export interface DrawStroke {
 export interface HistoryState {
   adjustments: Adjustments;
   imageSrc: string | null;
+}
+
+export type CollageFilter =
+  "none" | "vivid" | "warm" | "cool" | "mono" | "vintage" | "dramatic" | "cyber";
+
+export interface CollageSettings {
+  gap: number;
+  padding: number;
+  borderRadius: number;
+  bgColor: string;
+  filter: CollageFilter;
 }
 
 export interface ImageEditorContextType {
@@ -78,7 +90,7 @@ export interface ImageEditorContextType {
   handleImageUpload: (file: File) => void;
   clearImage: () => void;
   hasChanges: boolean;
-  
+
   // Aspect Ratio State
   selectedAspectRatio: string;
   setSelectedAspectRatio: (ratio: string) => void;
@@ -99,6 +111,13 @@ export interface ImageEditorContextType {
   setLayoutPattern: (pattern: CollageLayoutPattern) => void;
   handleCollageTileUpload: (index: number, file: File) => void;
   isCollageHasPhotos: boolean;
+  collageSettings: CollageSettings;
+  updateCollageSettings: <K extends keyof CollageSettings>(
+    key: K,
+    value: CollageSettings[K]
+  ) => void;
+  resetCollageSettings: () => void;
+  clearCollagePhotos: () => void;
 
   getProcessedCanvas: () => HTMLCanvasElement | null;
   originalImgRef: React.RefObject<HTMLImageElement | null>;

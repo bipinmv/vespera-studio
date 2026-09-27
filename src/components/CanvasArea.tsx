@@ -1,18 +1,27 @@
-import React, { useEffect, useRef, useState, useCallback, DragEvent, ChangeEvent, WheelEvent, MouseEvent } from 'react';
-import { useImageEditor } from '../context/ImageEditorContext';
-import { 
-  ZoomIn, 
-  ZoomOut, 
-  Maximize2, 
-  RotateCw, 
-  UploadCloud, 
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  DragEvent,
+  ChangeEvent,
+  WheelEvent,
+  MouseEvent
+} from "react";
+import { useImageEditor } from "../context/ImageEditorContext";
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RotateCw,
+  UploadCloud,
   Image as ImageIcon,
   Plus,
   FileImage,
   FolderOpen,
   Check,
   X
-} from 'lucide-react';
+} from "lucide-react";
 
 interface CropBox {
   x: number; // percentage 0 - 100
@@ -21,15 +30,15 @@ interface CropBox {
   h: number;
 }
 
-type DragMode = 'create' | 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null;
+type DragMode = "create" | "move" | "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w" | null;
 
 export const CanvasArea: React.FC = () => {
-  const { 
-    imageSrc, 
+  const {
+    imageSrc,
     applyCroppedImageSrc,
-    adjustments, 
-    zoomLevel, 
-    setZoomLevel, 
+    adjustments,
+    zoomLevel,
+    setZoomLevel,
     setImageDimensions,
     imageDimensions,
     handleImageUpload,
@@ -59,18 +68,20 @@ export const CanvasArea: React.FC = () => {
 
   // Brush Drawing State
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const [currentStrokePoints, setCurrentStrokePoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [currentStrokePoints, setCurrentStrokePoints] = useState<Array<{ x: number; y: number }>>(
+    []
+  );
 
   // Automatically enforce selected Aspect Ratio on cropBox
   useEffect(() => {
-    if (selectedAspectRatio === 'free') return;
-    
+    if (selectedAspectRatio === "free") return;
+
     let targetRatio = 1; // w / h
-    if (selectedAspectRatio === '1:1') targetRatio = 1;
-    else if (selectedAspectRatio === '16:9') targetRatio = 16 / 9;
-    else if (selectedAspectRatio === '4:3') targetRatio = 4 / 3;
-    else if (selectedAspectRatio === '9:16') targetRatio = 9 / 16;
-    else if (selectedAspectRatio === '3:2') targetRatio = 3 / 2;
+    if (selectedAspectRatio === "1:1") targetRatio = 1;
+    else if (selectedAspectRatio === "16:9") targetRatio = 16 / 9;
+    else if (selectedAspectRatio === "4:3") targetRatio = 4 / 3;
+    else if (selectedAspectRatio === "9:16") targetRatio = 9 / 16;
+    else if (selectedAspectRatio === "3:2") targetRatio = 3 / 2;
 
     const img = imageRef.current;
     const canvasAspect = img && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1;
@@ -88,7 +99,7 @@ export const CanvasArea: React.FC = () => {
 
     if (!canvas || !img || !img.complete) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     canvas.width = img.naturalWidth;
@@ -98,16 +109,16 @@ export const CanvasArea: React.FC = () => {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const { 
-      brightness, 
-      contrast, 
-      saturation, 
-      exposure, 
+    const {
+      brightness,
+      contrast,
+      saturation,
+      exposure,
       temperature,
-      blur, 
-      sepia, 
-      grayscale, 
-      hueRotate, 
+      blur,
+      sepia,
+      grayscale,
+      hueRotate,
       invert,
       vignette
     } = adjustments;
@@ -126,7 +137,7 @@ export const CanvasArea: React.FC = () => {
     `.trim();
 
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    ctx.filter = 'none';
+    ctx.filter = "none";
 
     // Temperature Warmth Tint
     if (temperature !== 0) {
@@ -136,7 +147,7 @@ export const CanvasArea: React.FC = () => {
       } else {
         ctx.fillStyle = `rgba(0, 120, 255, ${(Math.abs(temperature) / 100) * 0.3})`;
       }
-      ctx.globalCompositeOperation = 'color-burn';
+      ctx.globalCompositeOperation = "color-burn";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.restore();
     }
@@ -144,11 +155,15 @@ export const CanvasArea: React.FC = () => {
     // Vignette Effect
     if (vignette > 0) {
       const gradient = ctx.createRadialGradient(
-        canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) * 0.3,
-        canvas.width / 2, canvas.height / 2, Math.max(canvas.width, canvas.height) * 0.7
+        canvas.width / 2,
+        canvas.height / 2,
+        Math.max(canvas.width, canvas.height) * 0.3,
+        canvas.width / 2,
+        canvas.height / 2,
+        Math.max(canvas.width, canvas.height) * 0.7
       );
       const alpha = (vignette / 100) * 0.85;
-      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0, "rgba(0,0,0,0)");
       gradient.addColorStop(1, `rgba(0,0,0,${alpha})`);
 
       ctx.fillStyle = gradient;
@@ -158,12 +173,12 @@ export const CanvasArea: React.FC = () => {
     // Render Brush Strokes
     if (drawStrokes.length > 0 || currentStrokePoints.length > 0) {
       ctx.save();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
       const allStrokes = [...drawStrokes];
       if (currentStrokePoints.length > 0) {
-        allStrokes.push({ points: currentStrokePoints, color: '#2563eb', size: 20 });
+        allStrokes.push({ points: currentStrokePoints, color: "#2563eb", size: 20 });
       }
 
       allStrokes.forEach(stroke => {
@@ -171,9 +186,15 @@ export const CanvasArea: React.FC = () => {
         ctx.strokeStyle = stroke.color;
         ctx.lineWidth = (stroke.size / 100) * canvas.width * 0.04;
         ctx.beginPath();
-        ctx.moveTo((stroke.points[0].x / 100) * canvas.width, (stroke.points[0].y / 100) * canvas.height);
+        ctx.moveTo(
+          (stroke.points[0].x / 100) * canvas.width,
+          (stroke.points[0].y / 100) * canvas.height
+        );
         for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo((stroke.points[i].x / 100) * canvas.width, (stroke.points[i].y / 100) * canvas.height);
+          ctx.lineTo(
+            (stroke.points[i].x / 100) * canvas.width,
+            (stroke.points[i].y / 100) * canvas.height
+          );
         }
         ctx.stroke();
       });
@@ -186,7 +207,7 @@ export const CanvasArea: React.FC = () => {
       const realFontSize = (textOverlay.fontSize / 100) * canvas.height * 0.15;
       ctx.font = `bold ${realFontSize}px sans-serif`;
       ctx.fillStyle = textOverlay.color;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+      ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
       ctx.shadowBlur = 10;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
@@ -203,7 +224,7 @@ export const CanvasArea: React.FC = () => {
     setIsImageLoading(true);
 
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    img.crossOrigin = "anonymous";
     img.src = imageSrc;
     img.onload = () => {
       imageRef.current = img;
@@ -219,7 +240,15 @@ export const CanvasArea: React.FC = () => {
     if (imageSrc) {
       renderCanvas();
     }
-  }, [adjustments, rotation, imageSrc, drawStrokes, currentStrokePoints, textOverlay, renderCanvas]);
+  }, [
+    adjustments,
+    rotation,
+    imageSrc,
+    drawStrokes,
+    currentStrokePoints,
+    textOverlay,
+    renderCanvas
+  ]);
 
   // Mouse Wheel Zoom
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
@@ -263,7 +292,7 @@ export const CanvasArea: React.FC = () => {
   // PROFESSIONAL CROP OVERLAY DRAG & RESIZE CONTROLLERS
   // ----------------------------------------------------
   const handleCropOverlayMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    if (activeTool !== 'crop' || !cropOverlayRef.current) return;
+    if (activeTool !== "crop" || !cropOverlayRef.current) return;
     const rect = cropOverlayRef.current.getBoundingClientRect();
     const curX = ((e.clientX - rect.left) / rect.width) * 100;
     const curY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -273,22 +302,22 @@ export const CanvasArea: React.FC = () => {
 
     // Check if clicked inside existing crop box -> Move mode
     if (
-      curX >= cropBox.x && 
-      curX <= cropBox.x + cropBox.w && 
-      curY >= cropBox.y && 
+      curX >= cropBox.x &&
+      curX <= cropBox.x + cropBox.w &&
+      curY >= cropBox.y &&
       curY <= cropBox.y + cropBox.h
     ) {
-      setDragMode('move');
+      setDragMode("move");
     } else {
       // Clicked outside -> Create new box
-      setDragMode('create');
+      setDragMode("create");
       setCropBox({ x: curX, y: curY, w: 5, h: 5 });
     }
   };
 
   const startHandleDrag = (mode: DragMode, e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    if (activeTool !== 'crop' || !cropOverlayRef.current) return;
+    if (activeTool !== "crop" || !cropOverlayRef.current) return;
     const rect = cropOverlayRef.current.getBoundingClientRect();
     const curX = ((e.clientX - rect.left) / rect.width) * 100;
     const curY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -307,7 +336,7 @@ export const CanvasArea: React.FC = () => {
     const deltaX = curX - dragStartPos.x;
     const deltaY = curY - dragStartPos.y;
 
-    if (dragMode === 'move') {
+    if (dragMode === "move") {
       // Shift box position while keeping dimensions fixed
       const newX = Math.max(0, Math.min(100 - initialCropBox.w, initialCropBox.x + deltaX));
       const newY = Math.max(0, Math.min(100 - initialCropBox.h, initialCropBox.y + deltaY));
@@ -315,7 +344,7 @@ export const CanvasArea: React.FC = () => {
       return;
     }
 
-    if (dragMode === 'create') {
+    if (dragMode === "create") {
       const x = Math.min(dragStartPos.x, curX);
       const y = Math.min(dragStartPos.y, curY);
       const w = Math.abs(curX - dragStartPos.x);
@@ -330,20 +359,20 @@ export const CanvasArea: React.FC = () => {
     let nextW = initialCropBox.w;
     let nextH = initialCropBox.h;
 
-    if (dragMode.includes('e')) {
+    if (dragMode.includes("e")) {
       nextW = Math.max(5, Math.min(100 - initialCropBox.x, initialCropBox.w + deltaX));
     }
-    if (dragMode.includes('s')) {
+    if (dragMode.includes("s")) {
       nextH = Math.max(5, Math.min(100 - initialCropBox.y, initialCropBox.h + deltaY));
     }
-    if (dragMode.includes('w')) {
+    if (dragMode.includes("w")) {
       const potentialW = initialCropBox.w - deltaX;
       if (potentialW >= 5 && initialCropBox.x + deltaX >= 0) {
         nextX = initialCropBox.x + deltaX;
         nextW = potentialW;
       }
     }
-    if (dragMode.includes('n')) {
+    if (dragMode.includes("n")) {
       const potentialH = initialCropBox.h - deltaY;
       if (potentialH >= 5 && initialCropBox.y + deltaY >= 0) {
         nextY = initialCropBox.y + deltaY;
@@ -352,13 +381,13 @@ export const CanvasArea: React.FC = () => {
     }
 
     // Enforce active Aspect Ratio constraint during handle resize
-    if (selectedAspectRatio !== 'free') {
+    if (selectedAspectRatio !== "free") {
       let ratio = 1;
-      if (selectedAspectRatio === '1:1') ratio = 1;
-      else if (selectedAspectRatio === '16:9') ratio = 16 / 9;
-      else if (selectedAspectRatio === '4:3') ratio = 4 / 3;
-      else if (selectedAspectRatio === '9:16') ratio = 9 / 16;
-      else if (selectedAspectRatio === '3:2') ratio = 3 / 2;
+      if (selectedAspectRatio === "1:1") ratio = 1;
+      else if (selectedAspectRatio === "16:9") ratio = 16 / 9;
+      else if (selectedAspectRatio === "4:3") ratio = 4 / 3;
+      else if (selectedAspectRatio === "9:16") ratio = 9 / 16;
+      else if (selectedAspectRatio === "3:2") ratio = 3 / 2;
 
       const img = imageRef.current;
       const canvasAspect = img && img.naturalHeight > 0 ? img.naturalWidth / img.naturalHeight : 1;
@@ -376,7 +405,7 @@ export const CanvasArea: React.FC = () => {
 
   // Interactive Brush Drawing
   const handleCanvasMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (activeTool !== 'draw' || !canvasRef.current) return;
+    if (activeTool !== "draw" || !canvasRef.current) return;
     setIsDrawing(true);
     const rect = canvasRef.current.getBoundingClientRect();
     const xPct = ((e.clientX - rect.left) / rect.width) * 100;
@@ -385,7 +414,7 @@ export const CanvasArea: React.FC = () => {
   };
 
   const handleCanvasMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || activeTool !== 'draw' || !canvasRef.current) return;
+    if (!isDrawing || activeTool !== "draw" || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const xPct = ((e.clientX - rect.left) / rect.width) * 100;
     const yPct = ((e.clientY - rect.top) / rect.height) * 100;
@@ -394,7 +423,7 @@ export const CanvasArea: React.FC = () => {
 
   const handleCanvasMouseUp = () => {
     if (isDrawing && currentStrokePoints.length > 0) {
-      addDrawStroke({ points: currentStrokePoints, color: '#2563eb', size: 20 });
+      addDrawStroke({ points: currentStrokePoints, color: "#2563eb", size: 20 });
     }
     setIsDrawing(false);
     setCurrentStrokePoints([]);
@@ -416,21 +445,21 @@ export const CanvasArea: React.FC = () => {
 
     if (realW < 10 || realH < 10) return;
 
-    const tempCanvas = document.createElement('canvas');
+    const tempCanvas = document.createElement("canvas");
     tempCanvas.width = realW;
     tempCanvas.height = realH;
-    const tempCtx = tempCanvas.getContext('2d');
+    const tempCtx = tempCanvas.getContext("2d");
     if (!tempCtx) return;
 
     tempCtx.drawImage(img, realX, realY, realW, realH, 0, 0, realW, realH);
 
-    tempCanvas.toBlob((blob) => {
+    tempCanvas.toBlob(blob => {
       if (!blob) return;
       const croppedUrl = URL.createObjectURL(blob);
       applyCroppedImageSrc(croppedUrl);
-      setActiveTool('adjust');
+      setActiveTool("adjust");
       setCropBox({ x: 15, y: 15, w: 70, h: 70 });
-    }, 'image/png');
+    }, "image/png");
   };
 
   const cancelCrop = (e?: React.MouseEvent) => {
@@ -438,11 +467,11 @@ export const CanvasArea: React.FC = () => {
       e.stopPropagation();
       e.preventDefault();
     }
-    setActiveTool('adjust');
+    setActiveTool("adjust");
   };
 
   return (
-    <main 
+    <main
       ref={containerRef}
       onWheel={handleWheel}
       onDragOver={onDragOver}
@@ -451,11 +480,11 @@ export const CanvasArea: React.FC = () => {
       className="flex-1 bg-[#131313] relative flex flex-col items-center justify-center overflow-hidden p-6 select-none cursor-crosshair"
     >
       {/* Background Canvas Grid Pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-15 pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(#8d90a0 1px, transparent 1px)`,
-          backgroundSize: '24px 24px'
+          backgroundSize: "24px 24px"
         }}
       ></div>
 
@@ -464,7 +493,9 @@ export const CanvasArea: React.FC = () => {
         <div className="absolute inset-0 bg-[#2563eb]/20 backdrop-blur-md border-2 border-dashed border-[#2563eb] flex flex-col items-center justify-center z-50 transition-all">
           <UploadCloud className="w-16 h-16 text-[#2563eb] animate-bounce" />
           <p className="text-xl font-bold text-white mt-3">Drop Image to Edit in Vespera</p>
-          <span className="text-xs text-[#b4c5ff] font-mono mt-1">PNG, JPG, WEBP, or SVG supported</span>
+          <span className="text-xs text-[#b4c5ff] font-mono mt-1">
+            PNG, JPG, WEBP, or SVG supported
+          </span>
         </div>
       )}
 
@@ -491,19 +522,16 @@ export const CanvasArea: React.FC = () => {
             <label className="w-full py-3 px-5 bg-[#2563eb] hover:bg-blue-600 text-white font-semibold text-xs rounded-xl cursor-pointer transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2.5">
               <FolderOpen className="w-4 h-4" />
               <span>Browse Image File</span>
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={onFileInputChange} 
-                className="hidden" 
-              />
+              <input type="file" accept="image/*" onChange={onFileInputChange} className="hidden" />
             </label>
           </div>
 
           <div className="flex items-center gap-2 mt-6 pt-5 border-t border-[#2a2a2a] w-full justify-center text-[10px] font-mono text-[#8d90a0]">
             <span className="uppercase text-[9px] text-[#434655]">Supported:</span>
-            {['PNG', 'JPEG', 'WEBP', 'SVG'].map(fmt => (
-              <span key={fmt} className="px-2 py-0.5 rounded bg-[#131313] border border-[#2a2a2a]">{fmt}</span>
+            {["PNG", "JPEG", "WEBP", "SVG"].map(fmt => (
+              <span key={fmt} className="px-2 py-0.5 rounded bg-[#131313] border border-[#2a2a2a]">
+                {fmt}
+              </span>
             ))}
           </div>
         </div>
@@ -511,11 +539,11 @@ export const CanvasArea: React.FC = () => {
         /* CANVAS WORKSPACE */
         <>
           {/* Top Crop Action Bar */}
-          {activeTool === 'crop' && (
-            <div 
-              onMouseDown={(e) => e.stopPropagation()}
-              onMouseUp={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+          {activeTool === "crop" && (
+            <div
+              onMouseDown={e => e.stopPropagation()}
+              onMouseUp={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
               className="absolute top-4 bg-[#1c1b1b] border border-[#2a2a2a] p-1.5 rounded-full flex items-center gap-2 shadow-2xl z-50 animate-fadeIn"
             >
               <button
@@ -535,32 +563,32 @@ export const CanvasArea: React.FC = () => {
             </div>
           )}
 
-          <div 
+          <div
             className="relative transition-transform duration-200 ease-out max-w-full max-h-full flex items-center justify-center"
             style={{
               transform: `scale(${zoomLevel / 100}) rotate(${rotation}deg)`
             }}
           >
-            <canvas 
+            <canvas
               ref={canvasRef}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
               className={`max-w-[75vw] max-h-[72vh] object-contain canvas-shadow rounded-sm border border-[#2a2a2a] ${
-                activeTool === 'draw' ? 'cursor-pencil' : ''
+                activeTool === "draw" ? "cursor-pencil" : ""
               }`}
             />
 
             {/* Interactive 8-Handle Crop Selection Overlay */}
-            {activeTool === 'crop' && (
-              <div 
+            {activeTool === "crop" && (
+              <div
                 ref={cropOverlayRef}
                 onMouseDown={handleCropOverlayMouseDown}
                 onMouseMove={handleCropMouseMove}
                 onMouseUp={handleCropMouseUp}
                 className="absolute inset-0 z-30 cursor-crosshair border border-[#2563eb]/30"
               >
-                <div 
+                <div
                   className="absolute border-2 border-[#2563eb] bg-[#2563eb]/10 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] cursor-move"
                   style={{
                     left: `${cropBox.x}%`,
@@ -570,38 +598,38 @@ export const CanvasArea: React.FC = () => {
                   }}
                 >
                   {/* 4 Corner Handles */}
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('nw', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("nw", e)}
                     className="w-3.5 h-3.5 bg-white border-2 border-[#2563eb] absolute -top-2 -left-2 cursor-nwse-resize rounded-full shadow hover:scale-125 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('ne', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("ne", e)}
                     className="w-3.5 h-3.5 bg-white border-2 border-[#2563eb] absolute -top-2 -right-2 cursor-nesw-resize rounded-full shadow hover:scale-125 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('sw', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("sw", e)}
                     className="w-3.5 h-3.5 bg-white border-2 border-[#2563eb] absolute -bottom-2 -left-2 cursor-nesw-resize rounded-full shadow hover:scale-125 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('se', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("se", e)}
                     className="w-3.5 h-3.5 bg-white border-2 border-[#2563eb] absolute -bottom-2 -right-2 cursor-nwse-resize rounded-full shadow hover:scale-125 transition-transform"
                   />
 
                   {/* 4 Edge Handles */}
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('n', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("n", e)}
                     className="w-6 h-2 bg-white border border-[#2563eb] absolute -top-1 left-1/2 -translate-x-1/2 cursor-ns-resize rounded-sm shadow hover:scale-110 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('s', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("s", e)}
                     className="w-6 h-2 bg-white border border-[#2563eb] absolute -bottom-1 left-1/2 -translate-x-1/2 cursor-ns-resize rounded-sm shadow hover:scale-110 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('w', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("w", e)}
                     className="w-2 h-6 bg-white border border-[#2563eb] absolute top-1/2 -left-1 -translate-y-1/2 cursor-ew-resize rounded-sm shadow hover:scale-110 transition-transform"
                   />
-                  <div 
-                    onMouseDown={(e) => startHandleDrag('e', e)}
+                  <div
+                    onMouseDown={e => startHandleDrag("e", e)}
                     className="w-2 h-6 bg-white border border-[#2563eb] absolute top-1/2 -right-1 -translate-y-1/2 cursor-ew-resize rounded-sm shadow hover:scale-110 transition-transform"
                   />
 
@@ -632,24 +660,24 @@ export const CanvasArea: React.FC = () => {
           <div className="absolute bottom-5 bg-[#1c1b1b]/90 backdrop-blur-md border border-[#2a2a2a] px-4 py-2 rounded-full flex items-center gap-4 text-xs shadow-xl z-20">
             {/* Zoom Controls */}
             <div className="flex items-center gap-1.5 border-r border-[#2a2a2a] pr-3">
-              <button 
+              <button
                 onClick={() => setZoomLevel(prev => Math.max(25, prev - 15))}
-                className="p-1 hover:text-white text-[#8d90a0] transition" 
+                className="p-1 hover:text-white text-[#8d90a0] transition"
                 title="Zoom Out"
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
               <span className="font-mono text-white text-xs w-10 text-center">{zoomLevel}%</span>
-              <button 
+              <button
                 onClick={() => setZoomLevel(prev => Math.min(300, prev + 15))}
-                className="p-1 hover:text-white text-[#8d90a0] transition" 
+                className="p-1 hover:text-white text-[#8d90a0] transition"
                 title="Zoom In"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => setZoomLevel(100)}
-                className="p-1 hover:text-white text-[#8d90a0] transition ml-1" 
+                className="p-1 hover:text-white text-[#8d90a0] transition ml-1"
                 title="Reset Zoom (100%)"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -657,7 +685,7 @@ export const CanvasArea: React.FC = () => {
             </div>
 
             {/* Rotate Button */}
-            <button 
+            <button
               onClick={() => setRotation(prev => (prev + 90) % 360)}
               className="flex items-center gap-1.5 text-[#8d90a0] hover:text-white transition border-r border-[#2a2a2a] pr-3"
               title="Rotate 90°"
@@ -669,7 +697,9 @@ export const CanvasArea: React.FC = () => {
             {/* Image Resolution Metadata */}
             <div className="flex items-center gap-1.5 text-[#8d90a0] font-mono text-[11px] border-r border-[#2a2a2a] pr-3">
               <ImageIcon className="w-3.5 h-3.5 text-[#b4c5ff]" />
-              <span>{imageDimensions.width} × {imageDimensions.height} px</span>
+              <span>
+                {imageDimensions.width} × {imageDimensions.height} px
+              </span>
             </div>
 
             {/* Close / Replace Image */}
