@@ -41,10 +41,15 @@ export interface TextItem {
   y: number;
 }
 
+export type BrushMode = "brush" | "eraser";
+
 export interface DrawStroke {
+  id?: string;
   points: Array<{ x: number; y: number }>; // percentages 0 - 100
   color: string;
   size: number;
+  opacity?: number;
+  mode?: BrushMode;
 }
 
 export interface HistoryState {
@@ -109,7 +114,17 @@ export interface ImageEditorContextType {
   // Drawing & Masking State
   drawStrokes: DrawStroke[];
   addDrawStroke: (stroke: DrawStroke) => void;
+  undoLastStroke: () => void;
   clearDrawStrokes: () => void;
+  brushMode: BrushMode;
+  setBrushMode: (mode: BrushMode) => void;
+  brushSize: number;
+  setBrushSize: (size: number) => void;
+  brushColor: string;
+  setBrushColor: (color: string) => void;
+  brushOpacity: number;
+  setBrushOpacity: (opacity: number) => void;
+  createBlankCanvas: (width?: number, height?: number, color?: string) => void;
 
   // Collage State & Export Support
   collageImages: string[];

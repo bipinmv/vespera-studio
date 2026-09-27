@@ -51,15 +51,21 @@ export const CanvasArea: React.FC = () => {
     selectedTextId,
     setSelectedTextId,
     updateTextOverlay,
-    removeTextOverlay,
     drawStrokes,
-    addDrawStroke
+    addDrawStroke,
+    brushMode,
+    brushSize,
+    brushColor,
+    brushOpacity,
+    createBlankCanvas
   } = useImageEditor();
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cropOverlayRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [draggingTextId, setDraggingTextId] = useState<string | null>(null);
@@ -74,6 +80,7 @@ export const CanvasArea: React.FC = () => {
 
   // Brush Drawing State
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
+  const [brushPos, setBrushPos] = useState<{ x: number; y: number } | null>(null);
   const [currentStrokePoints, setCurrentStrokePoints] = useState<Array<{ x: number; y: number }>>(
     []
   );
@@ -110,8 +117,6 @@ export const CanvasArea: React.FC = () => {
 
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
-
-    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -176,35 +181,74 @@ export const CanvasArea: React.FC = () => {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Render Brush Strokes
+    // Render Brush Strokes onto a persistent isolated offscreen canvas layer
     if (drawStrokes.length > 0 || currentStrokePoints.length > 0) {
-      ctx.save();
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      const allStrokes = [...drawStrokes];
-      if (currentStrokePoints.length > 0) {
-        allStrokes.push({ points: currentStrokePoints, color: "#2563eb", size: 20 });
+      if (!drawCanvasRef.current) {
+        drawCanvasRef.current = document.createElement("canvas");
       }
+      const drawCanvas = drawCanvasRef.current;
+      if (drawCanvas.width !== canvas.width || drawCanvas.height !== canvas.height) {
+        drawCanvas.width = canvas.width;
+        drawCanvas.height = canvas.height;
+      }
+      const dCtx = drawCanvas.getContext("2d");
+      if (dCtx) {
+        dCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        dCtx.lineCap = "round";
+        dCtx.lineJoin = "round";
 
-      allStrokes.forEach(stroke => {
-        if (stroke.points.length < 2) return;
-        ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = (stroke.size / 100) * canvas.width * 0.04;
-        ctx.beginPath();
-        ctx.moveTo(
-          (stroke.points[0].x / 100) * canvas.width,
-          (stroke.points[0].y / 100) * canvas.height
-        );
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(
-            (stroke.points[i].x / 100) * canvas.width,
-            (stroke.points[i].y / 100) * canvas.height
-          );
+        const allStrokes = [...drawStrokes];
+        if (currentStrokePoints.length > 0) {
+          allStrokes.push({
+            points: currentStrokePoints,
+            color: brushColor,
+            size: brushSize,
+            opacity: brushOpacity,
+            mode: brushMode
+          });
         }
-        ctx.stroke();
-      });
-      ctx.restore();
+
+        allStrokes.forEach(stroke => {
+          if (!stroke.points || stroke.points.length === 0) return;
+          dCtx.save();
+          if (stroke.mode === "eraser") {
+            dCtx.globalCompositeOperation = "destination-out";
+            dCtx.strokeStyle = "rgba(0,0,0,1)";
+            dCtx.fillStyle = "rgba(0,0,0,1)";
+          } else {
+            dCtx.globalCompositeOperation = "source-over";
+            dCtx.globalAlpha = stroke.opacity ?? 1;
+            dCtx.strokeStyle = stroke.color;
+            dCtx.fillStyle = stroke.color;
+          }
+          const strokeWidth = Math.max(1, stroke.size * (canvas.width / 600));
+          dCtx.lineWidth = strokeWidth;
+
+          if (stroke.points.length === 1) {
+            dCtx.beginPath();
+            const px = (stroke.points[0].x / 100) * canvas.width;
+            const py = (stroke.points[0].y / 100) * canvas.height;
+            dCtx.arc(px, py, strokeWidth / 2, 0, Math.PI * 2);
+            dCtx.fill();
+          } else {
+            dCtx.beginPath();
+            dCtx.moveTo(
+              (stroke.points[0].x / 100) * canvas.width,
+              (stroke.points[0].y / 100) * canvas.height
+            );
+            for (let i = 1; i < stroke.points.length; i++) {
+              dCtx.lineTo(
+                (stroke.points[i].x / 100) * canvas.width,
+                (stroke.points[i].y / 100) * canvas.height
+              );
+            }
+            dCtx.stroke();
+          }
+          dCtx.restore();
+        });
+
+        ctx.drawImage(drawCanvas, 0, 0);
+      }
     }
 
     // Render Multi-Text Overlay Layers
@@ -227,24 +271,39 @@ export const CanvasArea: React.FC = () => {
       ctx.fillText(item.text, tx, ty);
       ctx.restore();
     });
-  }, [adjustments, setImageDimensions, drawStrokes, currentStrokePoints, textOverlays]);
+  }, [
+    adjustments,
+    drawStrokes,
+    currentStrokePoints,
+    textOverlays,
+    brushColor,
+    brushSize,
+    brushOpacity,
+    brushMode
+  ]);
 
   useEffect(() => {
     if (!imageSrc) return;
     setIsImageLoading(true);
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (imageSrc.startsWith("http://") || imageSrc.startsWith("https://")) {
+      img.crossOrigin = "anonymous";
+    }
     img.src = imageSrc;
     img.onload = () => {
       imageRef.current = img;
+      const width = img.naturalWidth || img.width || 800;
+      const height = img.naturalHeight || img.height || 600;
+      setImageDimensions({ width, height });
       setIsImageLoading(false);
       renderCanvas();
     };
     img.onerror = () => {
       setIsImageLoading(false);
     };
-  }, [imageSrc, renderCanvas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageSrc]);
 
   useEffect(() => {
     if (imageSrc) {
@@ -257,6 +316,10 @@ export const CanvasArea: React.FC = () => {
     drawStrokes,
     currentStrokePoints,
     textOverlays,
+    brushColor,
+    brushSize,
+    brushOpacity,
+    brushMode,
     renderCanvas
   ]);
 
@@ -308,6 +371,26 @@ export const CanvasArea: React.FC = () => {
       handleImageUpload(e.target.files[0]);
     }
   };
+
+  // Global Clipboard Paste Support (Cmd+V / Ctrl+V)
+  useEffect(() => {
+    const handlePaste = (e: globalThis.ClipboardEvent) => {
+      if (imageSrc) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) {
+            handleImageUpload(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [imageSrc, handleImageUpload]);
 
   // ----------------------------------------------------
   // PROFESSIONAL CROP OVERLAY DRAG & RESIZE CONTROLLERS
@@ -424,35 +507,98 @@ export const CanvasArea: React.FC = () => {
     setInitialCropBox(null);
   };
 
-  // Interactive Brush Drawing
-  const handleCanvasMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (activeTool === "draw") {
-      if (!canvasRef.current) return;
-      setIsDrawing(true);
-      const rect = canvasRef.current.getBoundingClientRect();
-      const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-      const yPct = ((e.clientY - rect.top) / rect.height) * 100;
-      setCurrentStrokePoints([{ x: xPct, y: yPct }]);
-    } else {
-      // Clicking on the canvas outside of text unselects active text
-      setSelectedTextId(null);
+  // Accurate Canvas Point Mapping (accounting for zoom and rotation)
+  const getCanvasPoint = (clientX: number, clientY: number): { x: number; y: number } => {
+    if (!canvasRef.current) return { x: 50, y: 50 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    if (rotation === 0) {
+      const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+      return { x, y };
     }
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const rad = -(rotation * Math.PI) / 180;
+    const dx = clientX - centerX;
+    const dy = clientY - centerY;
+    const unrotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+    const unrotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
+    const unrotatedWidth = canvasRef.current.offsetWidth * (zoomLevel / 100);
+    const unrotatedHeight = canvasRef.current.offsetHeight * (zoomLevel / 100);
+    const x = Math.max(
+      0,
+      Math.min(100, ((unrotatedDx + unrotatedWidth / 2) / unrotatedWidth) * 100)
+    );
+    const y = Math.max(
+      0,
+      Math.min(100, ((unrotatedDy + unrotatedHeight / 2) / unrotatedHeight) * 100)
+    );
+    return { x, y };
+  };
+
+  // Interactive Brush & Eraser Drawing with Continuous Mouse Capture & RAF Batching
+  const handleCanvasMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
+    if (activeTool !== "draw") {
+      setActiveTool("draw");
+    }
+    setSelectedTextId(null);
+    if (!canvasRef.current) return;
+
+    e.preventDefault();
+    setIsDrawing(true);
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    const points: { x: number; y: number }[] = [pt];
+    setCurrentStrokePoints([pt]);
+
+    let rafId: number | null = null;
+
+    const onWindowMove = (moveEvt: globalThis.MouseEvent) => {
+      const newPt = getCanvasPoint(moveEvt.clientX, moveEvt.clientY);
+      points.push(newPt);
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          setCurrentStrokePoints([...points]);
+        });
+      }
+    };
+
+    const onWindowUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      window.removeEventListener("mousemove", onWindowMove);
+      window.removeEventListener("mouseup", onWindowUp);
+      setIsDrawing(false);
+      if (points.length > 0) {
+        addDrawStroke({
+          points: [...points],
+          color: brushColor,
+          size: brushSize,
+          opacity: brushOpacity,
+          mode: brushMode
+        });
+      }
+      setCurrentStrokePoints([]);
+    };
+
+    window.addEventListener("mousemove", onWindowMove);
+    window.addEventListener("mouseup", onWindowUp);
   };
 
   const handleCanvasMouseMove = (e: MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || activeTool !== "draw" || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
-    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
-    setCurrentStrokePoints(prev => [...prev, { x: xPct, y: yPct }]);
+    if (activeTool === "draw") {
+      setBrushPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    }
+  };
+
+  const handleCanvasMouseLeave = () => {
+    setBrushPos(null);
   };
 
   const handleCanvasMouseUp = () => {
-    if (isDrawing && currentStrokePoints.length > 0) {
-      addDrawStroke({ points: currentStrokePoints, color: "#2563eb", size: 20 });
-    }
     setIsDrawing(false);
-    setCurrentStrokePoints([]);
   };
 
   // Drag and reposition a specific text overlay by id
@@ -575,40 +721,98 @@ export const CanvasArea: React.FC = () => {
         </div>
       )}
 
-      {/* EMPTY STATE */}
+      {/* EMPTY STATE - ORGANIC MOVING / ROTATING FLUID SHAPE WITH ORIGINAL CONTENT */}
       {!imageSrc ? (
-        <div className="w-full max-w-md bg-[#1c1b1b]/80 backdrop-blur-xl border border-[#2a2a2a] rounded-2xl p-8 flex flex-col items-center text-center shadow-2xl z-20 animate-fadeIn">
-          <div className="relative mb-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#2563eb] to-[#b4c5ff] p-0.5 shadow-xl shadow-blue-900/30">
-              <div className="w-full h-full bg-[#131313] rounded-[14px] flex items-center justify-center text-[#2563eb]">
-                <FileImage className="w-9 h-9" />
+        <div className="flex flex-col items-center justify-center z-20 animate-fadeIn select-none p-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onFileInputChange}
+            className="hidden"
+          />
+
+          {/* Fluid Blob Interactive Container */}
+          <div
+            onClick={e => {
+              if ((e.target as HTMLElement).closest("label, input")) return;
+              fileInputRef.current?.click();
+            }}
+            className="relative w-[380px] h-[390px] sm:w-[470px] sm:h-[480px] flex items-center justify-center cursor-pointer group"
+          >
+            {/* Layer 1: Outermost Translucent Slow Rotating Fluid Shape */}
+            <div className="absolute inset-0 bg-[#2563eb]/20 animate-blob-outer transition-transform group-hover:scale-105 duration-700" />
+
+            {/* Layer 2: Middle Translucent Reverse Rotating Fluid Shape */}
+            <div className="absolute inset-3 sm:inset-4 bg-[#2563eb]/35 animate-blob-mid transition-transform group-hover:scale-105 duration-700" />
+
+            {/* Layer 3: Innermost Obsidian Glass Fluid Shape */}
+            <div className="absolute inset-6 sm:inset-7 bg-gradient-to-b from-[#1c1b1b]/95 via-[#18181b]/95 to-[#121622]/95 backdrop-blur-2xl border-2 border-[#2563eb]/50 shadow-[0_0_60px_rgba(37,99,235,0.35)] animate-blob-inner transition-transform group-hover:scale-105 duration-700" />
+
+            {/* Center Content (Stationary, upright, and crystal clear) */}
+            <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-4 max-w-[280px] sm:max-w-[340px]">
+              {/* Icon with gradient ring & plus badge */}
+              <div className="relative mb-3.5 transition-transform group-hover:scale-105 duration-300">
+                <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-tr from-[#2563eb] to-[#b4c5ff] p-0.5 shadow-xl shadow-blue-900/30">
+                  <div className="w-full h-full bg-[#131313] rounded-[14px] flex items-center justify-center text-[#2563eb]">
+                    <FileImage className="w-8 h-8 sm:w-9 sm:h-9" />
+                  </div>
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-[#2563eb] text-white p-1 rounded-full border-2 border-[#1c1b1b]">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              {/* Title & Description */}
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                Open an Image to Begin
+              </h2>
+              <p className="text-[11px] sm:text-xs text-[#8d90a0] mt-1.5 leading-relaxed max-w-[260px] sm:max-w-xs">
+                Drag and drop your photo anywhere on screen, or browse from your device.
+              </p>
+
+              {/* Browse Button */}
+              <div className="mt-4 sm:mt-5 w-full max-w-[220px]">
+                <label
+                  onClick={e => e.stopPropagation()}
+                  className="w-full py-2.5 px-4 bg-[#2563eb] hover:bg-blue-600 text-white font-semibold text-xs rounded-xl cursor-pointer transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  <span>Browse Image File</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={onFileInputChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Or start blank canvas for sketching */}
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  createBlankCanvas(1200, 800, "#18181b");
+                }}
+                className="mt-2 text-[11px] text-[#8d90a0] hover:text-[#b4c5ff] transition-colors underline underline-offset-4 cursor-pointer"
+              >
+                or create a blank canvas to sketch
+              </button>
+
+              {/* Supported Formats */}
+              <div className="flex items-center gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-[#2a2a2a]/80 w-full justify-center text-[10px] font-mono text-[#8d90a0]">
+                <span className="uppercase text-[9px] text-[#56596b]">Supported:</span>
+                {["PNG", "JPEG", "WEBP", "SVG"].map(fmt => (
+                  <span
+                    key={fmt}
+                    className="px-2 py-0.5 rounded bg-[#131313]/90 border border-[#2a2a2a] text-[#a1a4b5]"
+                  >
+                    {fmt}
+                  </span>
+                ))}
               </div>
             </div>
-            <div className="absolute -bottom-1 -right-1 bg-[#2563eb] text-white p-1 rounded-full border-2 border-[#1c1b1b]">
-              <Plus className="w-4 h-4" />
-            </div>
-          </div>
-
-          <h2 className="text-xl font-bold text-white tracking-tight">Open an Image to Begin</h2>
-          <p className="text-xs text-[#8d90a0] mt-1.5 leading-relaxed max-w-xs">
-            Drag and drop your photo anywhere on screen, or browse from your device.
-          </p>
-
-          <div className="mt-6 w-full">
-            <label className="w-full py-3 px-5 bg-[#2563eb] hover:bg-blue-600 text-white font-semibold text-xs rounded-xl cursor-pointer transition shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2.5">
-              <FolderOpen className="w-4 h-4" />
-              <span>Browse Image File</span>
-              <input type="file" accept="image/*" onChange={onFileInputChange} className="hidden" />
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2 mt-6 pt-5 border-t border-[#2a2a2a] w-full justify-center text-[10px] font-mono text-[#8d90a0]">
-            <span className="uppercase text-[9px] text-[#434655]">Supported:</span>
-            {["PNG", "JPEG", "WEBP", "SVG"].map(fmt => (
-              <span key={fmt} className="px-2 py-0.5 rounded bg-[#131313] border border-[#2a2a2a]">
-                {fmt}
-              </span>
-            ))}
           </div>
         </div>
       ) : (
@@ -650,11 +854,35 @@ export const CanvasArea: React.FC = () => {
                 ref={canvasRef}
                 onMouseDown={handleCanvasMouseDown}
                 onMouseMove={handleCanvasMouseMove}
+                onMouseLeave={handleCanvasMouseLeave}
                 onMouseUp={handleCanvasMouseUp}
-                className={`max-w-[75vw] max-h-[72vh] object-contain canvas-shadow rounded-sm border border-[#2a2a2a] block ${
-                  activeTool === "draw" ? "cursor-pencil" : ""
+                className={`max-w-[75vw] max-h-[72vh] w-auto h-auto canvas-shadow rounded-sm border border-[#2a2a2a] block ${
+                  activeTool === "draw"
+                    ? brushMode === "eraser"
+                      ? "cursor-cell"
+                      : "cursor-crosshair"
+                    : ""
                 }`}
               />
+
+              {/* Dynamic Live Brush / Eraser Size Ring Cursor */}
+              {activeTool === "draw" && brushPos && (
+                <div
+                  className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/90 shadow-[0_0_2px_rgba(0,0,0,0.8)] z-40 transition-none"
+                  style={{
+                    left: brushPos.x,
+                    top: brushPos.y,
+                    width: Math.max(1, brushSize * ((canvasRef.current?.offsetWidth || 600) / 600)),
+                    height: Math.max(
+                      1,
+                      brushSize * ((canvasRef.current?.offsetWidth || 600) / 600)
+                    ),
+                    backgroundColor:
+                      brushMode === "eraser" ? "rgba(255,255,255,0.25)" : `${brushColor}33`,
+                    borderColor: brushMode === "eraser" ? "#ffffff" : brushColor
+                  }}
+                />
+              )}
 
               {/* Draggable Multi-Text Overlay Elements */}
               {textOverlays.map(item => {

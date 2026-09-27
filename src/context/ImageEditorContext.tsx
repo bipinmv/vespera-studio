@@ -17,6 +17,7 @@ import {
   ImageEditorContextType,
   TextItem,
   DrawStroke,
+  BrushMode,
   HistoryState,
   CollageLayoutPattern,
   CollageSettings,
@@ -228,8 +229,16 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setSelectedTextId(null);
   }, []);
 
-  // Drawing Strokes State
+  // Drawing Strokes State & Controls
   const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
+  const [brushMode, setBrushMode] = useState<BrushMode>("brush");
+  const [brushSize, setBrushSize] = useState<number>(15);
+  const [brushColor, setBrushColor] = useState<string>("#2563eb");
+  const [brushOpacity, setBrushOpacity] = useState<number>(1);
+
+  const undoLastStroke = useCallback(() => {
+    setDrawStrokes(prev => prev.slice(0, -1));
+  }, []);
 
   // Collage State & Controls
   const [collageImages, setCollageImages] = useState<string[]>([
@@ -456,6 +465,25 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
     setDrawStrokes([]);
   }, []);
 
+  const createBlankCanvas = useCallback((width = 1200, height = 800, color = "#1e1e1e") => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, width, height);
+    }
+    const dataUrl = canvas.toDataURL("image/png");
+    setImageSrc(dataUrl);
+    setImageName("Blank Canvas.png");
+    setImageDimensions({ width, height });
+    setHistory([{ adjustments: DEFAULT_ADJUSTMENTS, imageSrc: dataUrl }]);
+    setHistoryIndex(0);
+    setActiveTool("draw");
+    setViewMode("editor");
+  }, []);
+
   // Generate a processed canvas: handles both Editor Mode single image & Collage Mode grid
   const getProcessedCanvas = useCallback((): HTMLCanvasElement | null => {
     // 1. In Collage View Mode, return the rendered collage canvas
@@ -537,29 +565,55 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // Render Drawing Brush Strokes
+    // Render Drawing Brush & Eraser Strokes onto an isolated canvas layer
     if (drawStrokes.length > 0) {
-      ctx.save();
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      drawStrokes.forEach(stroke => {
-        if (stroke.points.length < 2) return;
-        ctx.strokeStyle = stroke.color;
-        ctx.lineWidth = (stroke.size / 100) * canvas.width * 0.05;
-        ctx.beginPath();
-        ctx.moveTo(
-          (stroke.points[0].x / 100) * canvas.width,
-          (stroke.points[0].y / 100) * canvas.height
-        );
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(
-            (stroke.points[i].x / 100) * canvas.width,
-            (stroke.points[i].y / 100) * canvas.height
-          );
-        }
-        ctx.stroke();
-      });
-      ctx.restore();
+      const drawCanvas = document.createElement("canvas");
+      drawCanvas.width = canvas.width;
+      drawCanvas.height = canvas.height;
+      const dCtx = drawCanvas.getContext("2d");
+      if (dCtx) {
+        dCtx.lineCap = "round";
+        dCtx.lineJoin = "round";
+        drawStrokes.forEach(stroke => {
+          if (!stroke.points || stroke.points.length === 0) return;
+          dCtx.save();
+          if (stroke.mode === "eraser") {
+            dCtx.globalCompositeOperation = "destination-out";
+            dCtx.strokeStyle = "rgba(0,0,0,1)";
+            dCtx.fillStyle = "rgba(0,0,0,1)";
+          } else {
+            dCtx.globalCompositeOperation = "source-over";
+            dCtx.globalAlpha = stroke.opacity ?? 1;
+            dCtx.strokeStyle = stroke.color;
+            dCtx.fillStyle = stroke.color;
+          }
+          const strokeWidth = Math.max(1, stroke.size * (canvas.width / 600));
+          dCtx.lineWidth = strokeWidth;
+
+          if (stroke.points.length === 1) {
+            dCtx.beginPath();
+            const px = (stroke.points[0].x / 100) * canvas.width;
+            const py = (stroke.points[0].y / 100) * canvas.height;
+            dCtx.arc(px, py, strokeWidth / 2, 0, Math.PI * 2);
+            dCtx.fill();
+          } else {
+            dCtx.beginPath();
+            dCtx.moveTo(
+              (stroke.points[0].x / 100) * canvas.width,
+              (stroke.points[0].y / 100) * canvas.height
+            );
+            for (let i = 1; i < stroke.points.length; i++) {
+              dCtx.lineTo(
+                (stroke.points[i].x / 100) * canvas.width,
+                (stroke.points[i].y / 100) * canvas.height
+              );
+            }
+            dCtx.stroke();
+          }
+          dCtx.restore();
+        });
+        ctx.drawImage(drawCanvas, 0, 0);
+      }
     }
 
     // Render Multi-Text Overlay Layers
@@ -628,7 +682,17 @@ export const ImageEditorProvider: React.FC<ProviderProps> = ({ children }) => {
         clearTextOverlays,
         drawStrokes,
         addDrawStroke,
+        undoLastStroke,
         clearDrawStrokes,
+        brushMode,
+        setBrushMode,
+        brushSize,
+        setBrushSize,
+        brushColor,
+        setBrushColor,
+        brushOpacity,
+        setBrushOpacity,
+        createBlankCanvas,
         collageImages,
         setCollageImages,
         layoutPattern,

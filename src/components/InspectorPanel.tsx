@@ -18,7 +18,10 @@ import {
   Type as TypeIcon,
   Pencil as PencilIcon,
   Trash2,
-  Plus
+  Plus,
+  Eraser,
+  Paintbrush,
+  Undo2
 } from "lucide-react";
 
 interface OpenSections {
@@ -39,6 +42,7 @@ export const InspectorPanel: React.FC = () => {
     applyPresetFilter,
     imageDimensions,
     activeTool,
+    setActiveTool,
     imageSrc,
     selectedAspectRatio,
     setSelectedAspectRatio,
@@ -49,7 +53,17 @@ export const InspectorPanel: React.FC = () => {
     updateTextOverlay,
     removeTextOverlay,
     clearDrawStrokes,
-    drawStrokes
+    undoLastStroke,
+    drawStrokes,
+    brushMode,
+    setBrushMode,
+    brushSize,
+    setBrushSize,
+    brushColor,
+    setBrushColor,
+    brushOpacity,
+    setBrushOpacity,
+    createBlankCanvas
   } = useImageEditor();
 
   const [openSections, setOpenSections] = useState<OpenSections>({
@@ -67,10 +81,6 @@ export const InspectorPanel: React.FC = () => {
   const cropRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
   const drawRef = useRef<HTMLDivElement | null>(null);
-
-  // Local state for Draw
-  const [brushSize, setBrushSize] = useState<number>(20);
-  const [brushColor, setBrushColor] = useState<string>("#2563eb");
 
   const currentTextItem = textOverlays.find(t => t.id === selectedTextId) || null;
 
@@ -598,13 +608,23 @@ export const InspectorPanel: React.FC = () => {
       {/* Accordion Section 5: Draw & Brush */}
       <div
         ref={drawRef}
+        onClickCapture={() => {
+          if (activeTool !== "draw") {
+            setActiveTool("draw");
+          }
+        }}
         className={`border-b border-[#2a2a2a] transition-all duration-300 ${
           activeTool === "draw" ? "bg-[#2563eb]/10 border-l-4 border-l-[#2563eb]" : ""
         }`}
       >
         <button
-          onClick={() => toggleSection("draw")}
-          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-[#e5e2e1] hover:bg-[#201f1f] transition"
+          onClick={() => {
+            if (!openSections.draw) {
+              setOpenSections(prev => ({ ...prev, draw: true }));
+            }
+            setActiveTool("draw");
+          }}
+          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-[#e5e2e1] hover:bg-[#201f1f] transition cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <PencilIcon
@@ -613,54 +633,186 @@ export const InspectorPanel: React.FC = () => {
             <span
               className={`uppercase tracking-wider ${activeTool === "draw" ? "text-white font-bold" : ""}`}
             >
-              BRUSH & MASK
+              BRUSH & MARKUP {drawStrokes.length > 0 ? `(${drawStrokes.length})` : ""}
             </span>
           </div>
-          <ChevronDown
-            className={`w-4 h-4 text-[#8d90a0] transition-transform ${openSections.draw ? "rotate-180" : ""}`}
-          />
+          <div
+            onClick={e => {
+              e.stopPropagation();
+              toggleSection("draw");
+            }}
+            className="p-1 hover:bg-[#2a2a2a] rounded cursor-pointer"
+          >
+            <ChevronDown
+              className={`w-4 h-4 text-[#8d90a0] transition-transform ${openSections.draw ? "rotate-180" : ""}`}
+            />
+          </div>
         </button>
 
         {openSections.draw && (
-          <div className="p-4 flex flex-col gap-3 bg-[#131313]/50">
+          <div className="p-4 flex flex-col gap-3.5 bg-[#131313]/50">
+            {!imageSrc && (
+              <div className="p-3 bg-[#2563eb]/10 border border-[#2563eb]/30 rounded-lg flex flex-col gap-2">
+                <span className="text-[11px] text-[#b4c5ff] leading-relaxed">
+                  No photo opened. Create a blank canvas to sketch and draw freely:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => createBlankCanvas(1200, 800, "#18181b")}
+                  className="py-1.5 px-3 bg-[#2563eb] hover:bg-blue-600 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Blank Canvas</span>
+                </button>
+              </div>
+            )}
+
+            {/* Tool Mode Segmented Control: Brush vs Eraser */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a]">
+              <button
+                type="button"
+                onClick={() => {
+                  setBrushMode("brush");
+                  setActiveTool("draw");
+                }}
+                className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-mono font-medium transition ${
+                  brushMode === "brush"
+                    ? "bg-[#2563eb] text-white shadow-sm font-semibold"
+                    : "text-[#8d90a0] hover:text-white"
+                }`}
+              >
+                <Paintbrush className="w-3.5 h-3.5" />
+                <span>Paint</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBrushMode("eraser");
+                  setActiveTool("draw");
+                }}
+                className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-mono font-medium transition ${
+                  brushMode === "eraser"
+                    ? "bg-[#2563eb] text-white shadow-sm font-semibold"
+                    : "text-[#8d90a0] hover:text-white"
+                }`}
+              >
+                <Eraser className="w-3.5 h-3.5" />
+                <span>Eraser</span>
+              </button>
+            </div>
+
+            {/* Brush / Eraser Size */}
             <div className="flex flex-col gap-1.5">
               <div className="flex justify-between text-xs font-mono">
-                <span className="text-[#8d90a0]">Brush Size</span>
+                <span className="text-[#8d90a0]">
+                  {brushMode === "eraser" ? "Eraser Size" : "Brush Size"}
+                </span>
                 <span className="text-white font-medium">{brushSize}px</span>
               </div>
               <input
                 type="range"
-                min="2"
-                max="60"
+                min="1"
+                max="80"
                 value={brushSize}
                 onChange={e => setBrushSize(Number(e.target.value))}
                 className="w-full h-1.5 bg-[#2a2a2a] rounded-lg appearance-none cursor-pointer accent-[#2563eb]"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-mono text-[#8d90a0]">Brush Color</label>
-              <div className="flex items-center gap-1.5">
-                {["#2563eb", "#94de2d", "#ffb596", "#ffffff", "#000000"].map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setBrushColor(c)}
-                    className={`w-5 h-5 rounded-full border ${brushColor === c ? "border-white ring-2 ring-[#2563eb]" : "border-transparent"}`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
+            {/* Brush Opacity (Only for Paint mode) */}
+            {brushMode === "brush" && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-[#8d90a0]">Opacity / Flow</span>
+                  <span className="text-white font-medium">{Math.round(brushOpacity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  value={Math.round(brushOpacity * 100)}
+                  onChange={e => setBrushOpacity(Number(e.target.value) / 100)}
+                  className="w-full h-1.5 bg-[#2a2a2a] rounded-lg appearance-none cursor-pointer accent-[#2563eb]"
+                />
               </div>
-            </div>
-
-            {drawStrokes.length > 0 && (
-              <button
-                onClick={clearDrawStrokes}
-                className="mt-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#201f1f] hover:bg-red-950/40 hover:text-red-400 border border-[#2a2a2a] rounded text-xs text-[#8d90a0] font-mono transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear Brush Drawing ({drawStrokes.length})</span>
-              </button>
             )}
+
+            {/* Brush Color Picker & Swatches (Only for Paint mode) */}
+            {brushMode === "brush" ? (
+              <div className="flex flex-col gap-2 pt-1 border-t border-[#2a2a2a]">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-mono text-[#8d90a0]">Brush Color</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={brushColor}
+                      onChange={e => setBrushColor(e.target.value)}
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-xs font-mono text-white uppercase">{brushColor}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  {[
+                    "#2563eb",
+                    "#ef4444",
+                    "#10b981",
+                    "#f59e0b",
+                    "#8b5cf6",
+                    "#ffffff",
+                    "#000000"
+                  ].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setBrushColor(c)}
+                      className={`w-5 h-5 rounded-full border transition-transform ${
+                        brushColor === c
+                          ? "border-white ring-2 ring-[#2563eb] scale-110"
+                          : "border-[#333] hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-2 rounded bg-[#201f1f] border border-[#2a2a2a] text-[11px] font-mono text-[#8d90a0] leading-relaxed">
+                Eraser removes drawn markup strokes without altering the underlying photo.
+              </div>
+            )}
+
+            {/* Stroke Actions: Undo & Clear */}
+            <div className="flex items-center gap-2 pt-1 border-t border-[#2a2a2a]">
+              <button
+                type="button"
+                onClick={undoLastStroke}
+                disabled={drawStrokes.length === 0}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded text-xs font-mono transition border ${
+                  drawStrokes.length > 0
+                    ? "bg-[#201f1f] hover:bg-[#2a2a2a] text-white border-[#2a2a2a]"
+                    : "bg-[#181818] text-[#555] border-transparent cursor-not-allowed"
+                }`}
+                title="Undo last brush stroke"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span>Undo</span>
+              </button>
+
+              {drawStrokes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearDrawStrokes}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#201f1f] hover:bg-red-950/40 hover:text-red-400 border border-[#2a2a2a] rounded text-xs text-[#8d90a0] font-mono transition"
+                  title="Clear all strokes"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

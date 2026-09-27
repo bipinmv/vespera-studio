@@ -24,7 +24,8 @@ export const Header: React.FC = () => {
     handleImageUpload,
     imageName,
     hasChanges,
-    isCollageHasPhotos
+    isCollageHasPhotos,
+    clearImage
   } = useImageEditor();
 
   const onFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -39,9 +40,16 @@ export const Header: React.FC = () => {
     <header className="h-14 bg-[#1c1b1b] border-b border-[#2a2a2a] px-4 flex items-center justify-between text-sm select-none z-30">
       {/* Left Branding */}
       <div className="flex items-center gap-3">
-        <span className="font-black tracking-widest text-lg bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent select-none drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]">
+        <button
+          onClick={() => {
+            clearImage();
+            setViewMode("editor");
+          }}
+          title="Return to Home"
+          className="font-black tracking-widest text-lg bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent select-none drop-shadow-[0_0_12px_rgba(59,130,246,0.35)] hover:opacity-80 transition cursor-pointer"
+        >
           VESPERA
-        </span>
+        </button>
 
         {imageSrc && (
           <>
